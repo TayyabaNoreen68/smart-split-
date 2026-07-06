@@ -1,0 +1,1565 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SplitSmart – Split Smart, Not Hard</title>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --green: #00D084;
+    --green-dim: #00a868;
+    --bg: #0d0f13;
+    --surface: #161a22;
+    --surface2: #1e2330;
+    --surface3: #252c3a;
+    --border: #2a3040;
+    --text: #eef0f4;
+    --muted: #7a8499;
+    --warn: #f5a623;
+    --danger: #ff4d6d;
+    --radius: 14px;
+    --radius-sm: 8px;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'DM Sans', sans-serif;
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+  /* ── SCROLLBAR ── */
+  ::-webkit-scrollbar { width: 6px; }
+  ::-webkit-scrollbar-track { background: var(--bg); }
+  ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+
+  /* ── NAVBAR ── */
+  nav {
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    position: sticky; top: 0; z-index: 100;
+    padding: 0 20px;
+    display: flex; align-items: center; justify-content: space-between;
+    height: 58px;
+  }
+  .nav-logo {
+    font-family: 'Syne', sans-serif;
+    font-size: 1.3rem; font-weight: 800;
+    color: var(--green);
+    display: flex; align-items: center; gap: 8px;
+  }
+  .nav-logo span { color: var(--text); }
+  .nav-tabs { display: flex; gap: 4px; }
+  .nav-tab {
+    background: none; border: none; color: var(--muted);
+    font-family: 'DM Sans', sans-serif; font-size: 0.88rem; font-weight: 500;
+    padding: 7px 14px; border-radius: 8px; cursor: pointer;
+    position: relative; transition: color .2s, background .2s;
+  }
+  .nav-tab.active { background: var(--surface3); color: var(--green); }
+  .nav-tab .badge {
+    background: var(--green); color: #000;
+    font-size: 0.68rem; font-weight: 700;
+    border-radius: 10px; padding: 1px 6px;
+    margin-left: 4px;
+  }
+
+  /* ── PAGES ── */
+  .page { display: none; }
+  .page.active { display: block; }
+
+  /* ── SPLIT PAGE ── */
+  .split-wrap { max-width: 680px; margin: 0 auto; padding: 24px 16px 80px; }
+
+  /* ── PROGRESS ── */
+  .progress-bar {
+    display: flex; align-items: center; gap: 0;
+    margin-bottom: 32px;
+  }
+  .step-item {
+    display: flex; align-items: center; flex: 1;
+  }
+  .step-circle {
+    width: 34px; height: 34px; border-radius: 50%;
+    border: 2px solid var(--border);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 0.78rem; font-weight: 700; color: var(--muted);
+    background: var(--surface); flex-shrink: 0;
+    transition: all .3s;
+  }
+  .step-circle.done { background: var(--green); border-color: var(--green); color: #000; }
+  .step-circle.active { border-color: var(--green); color: var(--green); }
+  .step-label {
+    font-size: 0.72rem; color: var(--muted); margin-left: 6px;
+    white-space: nowrap;
+  }
+  .step-label.active { color: var(--green); font-weight: 600; }
+  .step-line { flex: 1; height: 2px; background: var(--border); margin: 0 8px; }
+  .step-line.done { background: var(--green); }
+
+  /* ── SECTION CARDS ── */
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 20px;
+    margin-bottom: 16px;
+  }
+  .card-title {
+    font-family: 'Syne', sans-serif;
+    font-size: 1.05rem; font-weight: 700;
+    margin-bottom: 4px;
+  }
+  .card-sub { font-size: 0.83rem; color: var(--muted); margin-bottom: 16px; }
+
+  /* ── TOGGLE ── */
+  .toggle-row {
+    display: flex; gap: 8px; margin-bottom: 16px;
+    background: var(--surface2); border-radius: 10px; padding: 4px;
+  }
+  .toggle-btn {
+    flex: 1; padding: 8px; border: none; border-radius: 7px;
+    font-family: 'DM Sans', sans-serif; font-size: 0.85rem; font-weight: 500;
+    color: var(--muted); background: none; cursor: pointer; transition: all .2s;
+  }
+  .toggle-btn.active { background: var(--surface3); color: var(--text); }
+
+  /* ── INPUTS ── */
+  input, textarea, select {
+    width: 100%;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    color: var(--text);
+    font-family: 'DM Sans', sans-serif;
+    font-size: 0.9rem;
+    padding: 10px 14px;
+    outline: none;
+    transition: border .2s;
+  }
+  input:focus, textarea:focus, select:focus { border-color: var(--green); }
+  textarea { resize: vertical; min-height: 90px; }
+  select option { background: var(--surface2); }
+
+  .row { display: flex; gap: 10px; }
+  .row input { flex: 1; }
+
+  /* ── BUTTONS ── */
+  .btn {
+    padding: 10px 20px; border: none; border-radius: var(--radius-sm);
+    font-family: 'DM Sans', sans-serif; font-size: 0.9rem; font-weight: 600;
+    cursor: pointer; transition: all .2s; display: inline-flex; align-items: center; gap: 6px;
+  }
+  .btn-green { background: var(--green); color: #000; }
+  .btn-green:hover { background: var(--green-dim); }
+  .btn-ghost { background: var(--surface2); color: var(--text); border: 1px solid var(--border); }
+  .btn-ghost:hover { background: var(--surface3); }
+  .btn-full { width: 100%; justify-content: center; padding: 13px; font-size: 0.95rem; }
+  .btn:disabled { opacity: .4; cursor: not-allowed; }
+  .btn-danger { background: transparent; color: var(--danger); border: 1px solid var(--danger); }
+  .btn-danger:hover { background: var(--danger); color: #fff; }
+
+  /* ── ITEMS LIST ── */
+  .items-list { margin-top: 14px; display: flex; flex-direction: column; gap: 8px; }
+  .item-row {
+    display: flex; align-items: center; justify-content: space-between;
+    background: var(--surface2); border-radius: var(--radius-sm);
+    padding: 10px 14px;
+    animation: fadeIn .2s ease;
+  }
+  .item-name { font-weight: 500; }
+  .item-price { color: var(--green); font-weight: 700; margin-left: auto; margin-right: 12px; }
+  .item-del {
+    background: none; border: none; color: var(--muted); cursor: pointer;
+    font-size: 1.1rem; line-height: 1; padding: 2px 6px; border-radius: 4px;
+    transition: color .2s;
+  }
+  .item-del:hover { color: var(--danger); }
+  .items-total {
+    display: flex; justify-content: space-between; align-items: center;
+    padding: 12px 14px; background: var(--surface3);
+    border-radius: var(--radius-sm); margin-top: 10px;
+    font-weight: 700;
+  }
+  .items-total .amt { color: var(--green); font-size: 1.1rem; }
+
+  /* ── UPLOAD ZONE ── */
+  .upload-zone {
+    border: 2px dashed var(--border); border-radius: var(--radius);
+    padding: 40px; text-align: center; color: var(--muted);
+    cursor: pointer; transition: border-color .2s;
+  }
+  .upload-zone:hover { border-color: var(--green); }
+  .upload-zone .icon { font-size: 2.5rem; margin-bottom: 8px; }
+
+  /* ── PEOPLE ── */
+  .people-list { display: flex; flex-direction: column; gap: 8px; margin-top: 14px; }
+  .person-row {
+    display: flex; align-items: center; gap: 12px;
+    background: var(--surface2); border-radius: var(--radius-sm); padding: 10px 14px;
+    animation: fadeIn .2s ease;
+  }
+  .avatar {
+    width: 36px; height: 36px; border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-weight: 700; font-size: 0.9rem; flex-shrink: 0;
+  }
+  .person-name { flex: 1; font-weight: 500; }
+  .person-del {
+    background: none; border: none; color: var(--muted); cursor: pointer; font-size: 1.1rem;
+    transition: color .2s;
+  }
+  .person-del:hover { color: var(--danger); }
+
+  /* ── SPLIT TABS ── */
+  .split-tabs { display: flex; gap: 0; margin-bottom: 20px; border-radius: 10px; overflow: hidden; border: 1px solid var(--border); }
+  .split-tab {
+    flex: 1; padding: 10px; border: none;
+    background: var(--surface2); color: var(--muted);
+    font-family: 'DM Sans', sans-serif; font-size: 0.88rem; font-weight: 600;
+    cursor: pointer; transition: all .2s;
+  }
+  .split-tab.active { background: var(--green); color: #000; }
+
+  /* ── EQUAL SPLIT ── */
+  .equal-info {
+    text-align: center; padding: 24px;
+    background: var(--surface2); border-radius: var(--radius); margin-bottom: 16px;
+  }
+  .equal-formula { font-size: 1.3rem; font-weight: 700; color: var(--green); margin: 8px 0; }
+  .person-cards { display: flex; flex-direction: column; gap: 8px; }
+  .person-card {
+    display: flex; align-items: center; gap: 12px;
+    background: var(--surface2); border-radius: var(--radius-sm); padding: 12px 16px;
+  }
+  .person-card .amt { margin-left: auto; font-weight: 700; color: var(--green); font-size: 1rem; }
+
+  /* ── BY ITEM ── */
+  .byitem-wrap { display: flex; flex-direction: column; gap: 16px; }
+  .unassigned-pool {
+    background: var(--surface2); border-radius: var(--radius); padding: 14px;
+  }
+  .pool-title { font-size: 0.78rem; font-weight: 700; color: var(--muted); margin-bottom: 10px; letter-spacing: .05em; }
+  .drag-item {
+    display: flex; align-items: center; justify-content: space-between;
+    background: var(--surface3); border-radius: var(--radius-sm);
+    padding: 9px 14px; margin-bottom: 8px; cursor: grab;
+    border: 1px solid var(--border); transition: border-color .2s;
+    user-select: none;
+  }
+  .drag-item:hover { border-color: var(--green); }
+  .drag-item.dragging { opacity: .5; }
+  .person-drop-card {
+    background: var(--surface2); border-radius: var(--radius); padding: 14px;
+    border: 2px solid transparent; transition: border-color .2s;
+  }
+  .person-drop-card.drag-over { border-color: var(--green); }
+  .drop-header { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
+  .drop-total { margin-left: auto; font-weight: 700; color: var(--green); }
+  .assigned-item {
+    display: flex; justify-content: space-between;
+    font-size: 0.83rem; color: var(--muted); padding: 4px 0;
+  }
+  .warn-box {
+    background: rgba(245,166,35,0.12); border: 1px solid rgba(245,166,35,.4);
+    border-radius: var(--radius-sm); padding: 10px 14px;
+    color: var(--warn); font-size: 0.85rem; margin-top: 12px;
+    display: flex; align-items: center; gap: 8px;
+  }
+
+  /* ── BY PERCENT ── */
+  .percent-card {
+    background: var(--surface2); border-radius: var(--radius); padding: 14px;
+    margin-bottom: 10px;
+  }
+  .percent-header { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; }
+  .percent-val { margin-left: auto; font-size: 0.9rem; }
+  .percent-val strong { color: var(--green); }
+  .pct-amt { font-size: 0.8rem; color: var(--muted); }
+  .slider-wrap input[type=range] {
+    -webkit-appearance: none;
+    width: 100%; height: 6px; border-radius: 3px;
+    background: var(--border); border: none; padding: 0; cursor: pointer;
+  }
+  .slider-wrap input[type=range]::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    width: 18px; height: 18px; border-radius: 50%;
+    background: var(--green); cursor: pointer;
+  }
+  .pct-total-bar {
+    background: var(--surface2); border-radius: var(--radius-sm);
+    padding: 12px 16px; display: flex; align-items: center; gap: 12px;
+    margin-top: 4px;
+  }
+  .pct-progress { flex: 1; height: 8px; background: var(--border); border-radius: 4px; overflow: hidden; }
+  .pct-progress-fill { height: 100%; background: var(--green); border-radius: 4px; transition: width .3s; }
+  .pct-progress-fill.over { background: var(--danger); }
+
+  /* ── SETTLEMENT ── */
+  .settle-header { text-align: center; padding: 20px 0 10px; }
+  .settle-emoji { font-size: 3rem; margin-bottom: 8px; animation: bounceIn .5s ease; }
+  .settle-subtitle { color: var(--muted); font-size: 0.9rem; }
+  .settlement-list { display: flex; flex-direction: column; gap: 10px; margin-bottom: 16px; }
+  .settle-row {
+    display: flex; align-items: center; justify-content: space-between;
+    background: var(--surface2); border-radius: var(--radius-sm); padding: 14px 16px;
+    animation: fadeIn .3s ease;
+  }
+  .settle-names { font-weight: 600; font-size: 0.95rem; }
+  .settle-arrow { color: var(--muted); margin: 0 6px; }
+  .settle-amt { color: var(--green); font-weight: 700; font-size: 1rem; }
+  .settle-summary {
+    display: flex; gap: 0; border: 1px solid var(--border);
+    border-radius: var(--radius-sm); overflow: hidden; margin-bottom: 16px;
+  }
+  .summary-cell {
+    flex: 1; padding: 12px; text-align: center;
+    border-right: 1px solid var(--border);
+  }
+  .summary-cell:last-child { border-right: none; }
+  .summary-cell .label { font-size: 0.7rem; color: var(--muted); font-weight: 700; letter-spacing: .05em; }
+  .summary-cell .val { font-size: 1rem; font-weight: 700; margin-top: 2px; color: var(--green); }
+  .autosave-note {
+    background: rgba(0,208,132,.08); border: 1px solid rgba(0,208,132,.2);
+    border-radius: var(--radius-sm); padding: 10px 14px;
+    font-size: 0.83rem; color: var(--green); margin-bottom: 14px;
+  }
+  .settle-actions { display: flex; gap: 10px; }
+  .save-group-row {
+    display: flex; gap: 10px; align-items: center;
+    background: var(--surface2); border-radius: var(--radius-sm); padding: 12px 14px; margin-bottom: 14px;
+  }
+  .save-group-row label { font-size: 0.88rem; cursor: pointer; }
+  .save-group-row select { flex: 1; }
+
+  /* ── GROUPS PAGE ── */
+  .page-wrap { max-width: 680px; margin: 0 auto; padding: 24px 16px 80px; }
+  .page-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 6px; }
+  .page-title { font-family: 'Syne', sans-serif; font-size: 1.4rem; font-weight: 800; }
+  .page-sub { color: var(--muted); font-size: 0.85rem; margin-bottom: 24px; }
+  .groups-list { display: flex; flex-direction: column; gap: 12px; }
+  .group-card {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: var(--radius); padding: 18px 20px;
+    display: flex; align-items: center; gap: 14px;
+    transition: border-color .2s; animation: fadeIn .25s;
+  }
+  .group-card:hover { border-color: var(--green); }
+  .group-icon {
+    width: 48px; height: 48px; border-radius: 12px;
+    background: var(--surface3); display: flex; align-items: center; justify-content: center;
+    font-size: 1.4rem;
+  }
+  .group-info { flex: 1; }
+  .group-name { font-family: 'Syne', sans-serif; font-size: 1rem; font-weight: 700; }
+  .group-meta { font-size: 0.8rem; color: var(--muted); margin-top: 3px; }
+  .avatars-row { display: flex; margin-top: 8px; }
+  .mini-avatar {
+    width: 24px; height: 24px; border-radius: 50%;
+    border: 2px solid var(--surface);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 0.65rem; font-weight: 700; margin-left: -6px;
+  }
+  .mini-avatar:first-child { margin-left: 0; }
+  .group-actions { display: flex; gap: 8px; align-items: center; }
+  .group-bills-count {
+    background: var(--surface2); border-radius: var(--radius-sm);
+    padding: 4px 10px; font-size: 0.78rem; color: var(--muted);
+  }
+
+  /* ── MODAL ── */
+  .modal-overlay {
+    position: fixed; inset: 0; background: rgba(0,0,0,.7);
+    display: flex; align-items: center; justify-content: center;
+    z-index: 200; display: none;
+    padding: 16px;
+  }
+  .modal-overlay.open { display: flex; }
+  .modal {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: var(--radius); padding: 24px; width: 100%; max-width: 420px;
+    animation: slideUp .25s ease;
+  }
+  .modal-title { font-family: 'Syne', sans-serif; font-weight: 700; font-size: 1.1rem; margin-bottom: 16px; }
+  .modal-actions { display: flex; gap: 10px; margin-top: 16px; }
+
+  /* ── HISTORY ── */
+  .history-list { display: flex; flex-direction: column; gap: 12px; }
+  .history-card {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: var(--radius); padding: 16px 18px;
+    animation: fadeIn .25s;
+  }
+  .history-top { display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; }
+  .history-date { font-size: 0.78rem; color: var(--muted); }
+  .history-total { font-weight: 700; color: var(--green); font-size: 1.05rem; }
+  .history-members { font-size: 0.83rem; color: var(--muted); }
+  .history-settle { margin-top: 8px; display: flex; flex-direction: column; gap: 4px; }
+  .history-settle-row { font-size: 0.82rem; }
+
+  /* ── CUSTOM REQ STYLES ── */
+  .btn-reset-history {
+    background-color: var(--danger);
+    color: #fff;
+    border: none;
+    padding: 4px 10px;
+    border-radius: 6px;
+    font-family: 'DM Sans', sans-serif;
+    font-size: 0.78rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: opacity 0.2s;
+  }
+  .btn-reset-history:hover { opacity: 0.9; }
+  .history-del-btn {
+    background: none;
+    border: none;
+    color: var(--danger);
+    font-size: 1.2rem;
+    font-weight: 700;
+    cursor: pointer;
+    line-height: 1;
+    padding: 2px 6px;
+    border-radius: 4px;
+    transition: background 0.2s;
+  }
+  .history-del-btn:hover { background: rgba(255, 77, 109, 0.1); }
+
+  /* ── EMPTY ── */
+  .empty-state { text-align: center; padding: 60px 20px; color: var(--muted); }
+  .empty-state .big { font-size: 3rem; margin-bottom: 12px; }
+  .empty-state p { font-size: 0.9rem; }
+
+  /* ── ANIMATIONS ── */
+  @keyframes fadeIn { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+  @keyframes slideUp { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: none; } }
+  @keyframes bounceIn {
+    0% { transform: scale(0); } 60% { transform: scale(1.2); } 100% { transform: scale(1); }
+  }
+
+  /* ── STEP PANELS ── */
+  .step-panel { display: none; }
+  .step-panel.active { display: block; animation: fadeIn .25s ease; }
+
+  /* ── NAV BOTTOM on mobile ── */
+  @media (max-width: 480px) {
+    nav { padding: 0 12px; }
+    .nav-logo { font-size: 1.1rem; }
+    .nav-tab { padding: 6px 10px; font-size: 0.8rem; }
+  }
+</style>
+</head>
+<body>
+
+<nav>
+  <div class="nav-logo">✂ Split<span>Smart</span></div>
+  <div class="nav-tabs">
+    <button class="nav-tab active" onclick="showPage('split')">Split</button>
+    <button class="nav-tab" onclick="showPage('history')" id="tab-history">History <span class="badge" id="history-badge">0</span></button>
+    <button class="nav-tab" onclick="showPage('groups')" id="tab-groups">Groups <span class="badge" id="groups-badge">0</span></button>
+  </div>
+</nav>
+
+<div class="page active" id="page-split">
+  <div class="split-wrap">
+
+    <div class="progress-bar" id="progress-bar">
+      </div>
+
+         <div class="step-panel active" id="step-1">
+      <div class="card">
+        <div class="card-title">Add Bill Items</div>
+        <div class="card-sub">Type items </div>
+
+        
+
+       
+  
+
+        <div id="input-scan" style="display:none">
+          <div class="upload-zone" onclick="document.getElementById('bill-file').click()">
+            <div class="icon">📄</div>
+            <div id="scan-status">Click to Upload Bill Photo</div>
+            <div style="font-size:.8rem;margin-top:4px">or drag & drop here</div>
+            <div style="font-size:.78rem;color:var(--green);margin-top:6px">AI auto-detects all items & prices</div>
+          </div>
+          <input type="file" id="bill-file" accept="image/*" style="display:none" onchange="handleBillPhoto(event)">
+        </div>
+      </div>
+        
+      
+
+      <div class="card">
+        <div class="card-title">Add Item Manually</div>
+        <div class="row" style="margin-bottom:0">
+          <input type="text" id="item-name" placeholder="Item name">
+          <input type="text" id="item-amount" placeholder="₹ Amount" inputmode="decimal" style="max-width:130px">
+          <button class="btn btn-green" onclick="addItem()">Add</button>
+        </div>
+        <div class="items-list" id="items-list"></div>
+        <div id="items-total" style="display:none" class="items-total">
+          <span id="item-count-label">0 ITEMS</span>
+          <span class="amt" id="total-display">₹0.00</span>
+        </div>
+      </div>
+
+      <button class="btn btn-green btn-full" id="continue-btn" onclick="goToStep(2)" disabled>
+        Continue → (₹0.00)
+      </button>
+    </div>
+
+    <div class="step-panel" id="step-2">
+      <div class="card">
+        <div class="card-title">Who's splitting this?</div>
+        <div class="card-sub">Add everyone who owes a share</div>
+
+        <div class="row">
+          <input type="text" id="person-name" placeholder="Name">
+          <button class="btn btn-green" onclick="addPerson()">Add</button>
+        </div>
+        <div class="people-list" id="people-list"></div>
+
+        <div id="people-error" style="color:var(--warn);font-size:.83rem;margin-top:10px;display:none">
+          ⚠ Add at least 2 people to continue
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">Who paid for each item?</div>
+        <div class="card-sub">If one or more people contributed to this item, select all of them. The cost will be divided equally among the selected members.</div>
+        <div id="item-payers-list"></div>
+        <div id="paidby-error" style="color:var(--warn);font-size:.83rem;margin-top:10px;display:none">
+          ⚠ Har item ke liye kam se kam 1 payer select karo
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">Import from Group</div>
+        <div class="row">
+          <select id="group-import-select" onchange="importFromGroup(this.value)">
+            <option value="">Import from a Group...</option>
+          </select>
+        </div>
+      </div>
+
+      <div style="display:flex;gap:10px">
+        <button class="btn btn-ghost btn-full" onclick="goToStep(1)">← Back</button>
+        <button class="btn btn-green btn-full" onclick="validatePeopleAndGo()">Let's Split →</button>
+      </div>
+    </div>
+
+    <div class="step-panel" id="step-3">
+      <div class="card">
+        <div class="card-title">Split the bill</div>
+        <div class="card-sub" id="split-subtitle">Dividing ₹0.00 among 0 people</div>
+
+        <div class="split-tabs">
+          <button class="split-tab active" onclick="switchSplitMethod('equal')">Equal</button>
+          <button class="split-tab" onclick="switchSplitMethod('byitem')">By Item</button>
+          <button class="split-tab" onclick="switchSplitMethod('bypct')">By %</button>
+        </div>
+
+        <div id="method-equal">
+          <div class="equal-info">
+            <div style="color:var(--muted);font-size:.85rem">Total ÷ People</div>
+            <div class="equal-formula" id="equal-formula">₹0.00 ÷ 0 = ₹0.00 each</div>
+          </div>
+          <div class="person-cards" id="equal-cards"></div>
+        </div>
+
+        <div id="method-byitem" style="display:none">
+          <div class="byitem-wrap">
+            <div class="unassigned-pool">
+              <div class="pool-title" id="unassigned-title">UNASSIGNED (0)</div>
+              <div id="unassigned-items"></div>
+            </div>
+            <div id="person-drop-zones"></div>
+            <div class="warn-box" id="assign-warn" style="display:none">
+              ⚠ <span id="assign-warn-text"></span>
+            </div>
+          </div>
+        </div>
+
+        <div id="method-bypct" style="display:none">
+          <div id="pct-sliders"></div>
+          <div class="pct-total-bar">
+            <div class="pct-progress">
+              <div class="pct-progress-fill" id="pct-fill" style="width:0%"></div>
+            </div>
+            <span id="pct-total-text" style="font-size:.85rem;font-weight:700">0%</span>
+          </div>
+          <div style="font-size:.78rem;color:var(--muted);margin-top:6px;text-align:center">Adjusting one slider auto-redistributes the rest</div>
+        </div>
+      </div>
+
+      <div style="display:flex;gap:10px;margin-top:4px">
+        <button class="btn btn-ghost btn-full" onclick="goToStep(2)">← Back</button>
+        <button class="btn btn-green btn-full" id="settle-btn" onclick="goToSettle()">See Settlement →</button>
+      </div>
+    </div>
+
+    <div class="step-panel" id="step-4">
+      <div class="card">
+        <div class="settle-header">
+          <div class="settle-emoji">🎉</div>
+          <div class="card-title">Here's how to settle up</div>
+          <div class="settle-subtitle" id="settle-subtitle">payments needed</div>
+        </div>
+
+        <div id="paid-by-tag" style="display:inline-block;background:rgba(0,208,132,.12);color:var(--green);border-radius:6px;padding:4px 10px;font-size:.8rem;font-weight:600;margin-bottom:14px"></div>
+
+        <div class="settlement-list" id="settlement-list"></div>
+
+        <div class="settle-summary" id="settle-summary"></div>
+
+        <div class="autosave-note">✅ This bill has been auto-saved to History. View it anytime in the History tab.</div>
+
+        <div class="save-group-row">
+          <input type="checkbox" id="save-group-chk" onchange="toggleSaveGroup()">
+          <label for="save-group-chk">Also save to a Group</label>
+          <select id="save-group-sel" style="display:none">
+            <option value="">Select group...</option>
+          </select>
+          <button class="btn btn-green" id="save-group-btn" style="display:none;padding:8px 14px" onclick="saveToGroup()">Save</button>
+        </div>
+
+        <div class="settle-actions">
+          <button class="btn btn-ghost btn-full" onclick="copySummary()">📋 Copy Summary</button>
+          <button class="btn btn-green btn-full" onclick="startOver()">🔄 Start Over</button>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<div class="page" id="page-history">
+  <div class="page-wrap">
+    <div class="page-header">
+      <div class="page-title">History</div>
+      <button class="btn-reset-history" id="history-reset-btn" onclick="clearAllHistory()" style="display:none;">Reset</button>
+    </div>
+    <div class="page-sub">All your past bills</div>
+    <div class="history-list" id="history-list"></div>
+  </div>
+</div>
+
+<div class="page" id="page-groups">
+  <div class="page-wrap">
+    <div class="page-header">
+      <div class="page-title">Your Groups</div>
+      <button class="btn btn-green" onclick="openNewGroupModal()">+ New Group</button>
+    </div>
+    <div class="page-sub">Friend circles & shared bill history</div>
+    <div class="groups-list" id="groups-list"></div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="group-modal">
+  <div class="modal">
+    <div class="modal-title">Create New Group</div>
+    <input type="text" id="group-name-input" placeholder="Group name (e.g. Foodies)">
+    <div style="margin-top:10px;font-size:.85rem;color:var(--muted);margin-bottom:6px">Add members:</div>
+    <div class="row">
+      <input type="text" id="gm-input" placeholder="Member name">
+      <button class="btn btn-ghost" onclick="addGroupMember()">Add</button>
+    </div>
+    <div id="gm-list" style="margin-top:10px;display:flex;flex-wrap:wrap;gap:8px"></div>
+    <div class="modal-actions">
+      <button class="btn btn-ghost btn-full" onclick="closeGroupModal()">Cancel</button>
+      <button class="btn btn-green btn-full" onclick="createGroup()">Create Group</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ══════════════════════════════════════════════
+//  STATE
+// ══════════════════════════════════════════════
+let state = {
+  currentStep: 1,
+  items: [],        // {name, price}
+  people: [],       // {name}
+  splitMethod: 'equal',
+  assignments: {},  // byitem: {personName: [{name,price}]}
+  percentages: {},  // bypct: {personName: number}
+  settlement: [],   // [{from, to, amount}]
+  paidBy: '',
+};
+
+let groups = JSON.parse(localStorage.getItem('ss_groups') || '[]');
+let history = JSON.parse(localStorage.getItem('ss_history') || '[]');
+
+const COLORS = ['#FF6B6B','#FFD93D','#6BCB77','#4D96FF','#C77DFF','#FF9A3C','#00D084','#FF477E'];
+
+// ══════════════════════════════════════════════
+//  NAVIGATION
+// ══════════════════════════════════════════════
+function showPage(page) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.nav-tab').forEach(t => t.classList.remove('active'));
+  document.getElementById('page-' + page).classList.add('active');
+  // highlight tab
+  const tabs = document.querySelectorAll('.nav-tab');
+  const map = ['split','history','groups'];
+  tabs[map.indexOf(page)].classList.add('active');
+  if (page === 'history') renderHistory();
+  if (page === 'groups') renderGroups();
+}
+
+// ══════════════════════════════════════════════
+//  PROGRESS BAR
+// ══════════════════════════════════════════════
+const stepLabels = ['Bill', 'People', 'Split', 'Settle'];
+function renderProgress() {
+  const pb = document.getElementById('progress-bar');
+  pb.innerHTML = '';
+  for (let i = 1; i <= 4; i++) {
+    const item = document.createElement('div');
+    item.className = 'step-item';
+    const circle = document.createElement('div');
+    circle.className = 'step-circle' + (i < state.currentStep ? ' done' : (i === state.currentStep ? ' active' : ''));
+    circle.textContent = i < state.currentStep ? '✓' : i;
+    const label = document.createElement('div');
+    label.className = 'step-label' + (i === state.currentStep ? ' active' : '');
+    label.textContent = stepLabels[i-1];
+    item.appendChild(circle);
+    item.appendChild(label);
+    pb.appendChild(item);
+    if (i < 4) {
+      const line = document.createElement('div');
+      line.className = 'step-line' + (i < state.currentStep ? ' done' : '');
+      pb.appendChild(line);
+    }
+  }
+}
+
+function goToStep(n) {
+
+  // Check before moving from Step 1 to Step 2
+  if (state.currentStep === 1 && n === 2) {
+
+    const name = document.getElementById('item-name').value.trim();
+    const amount = document.getElementById('item-amount').value.trim();
+
+    let error = document.getElementById('item-error');
+
+    if (!error) {
+      error = document.createElement('div');
+      error.id = 'item-error';
+      error.style.color = 'red';
+      error.style.fontSize = '14px';
+      error.style.marginTop = '8px';
+
+      document.getElementById('continue-btn').insertAdjacentElement('beforebegin', error);
+    }
+
+    // No item has been added
+    if (state.items.length === 0) {
+      error.textContent = 'Please add at least one item before continuing.';
+      return;
+    }
+
+    // Data entered but Add button not pressed
+    if (name !== '' || amount !== '') {
+      error.textContent = 'Click "Add" first or clear the fields.';
+      return;
+    }
+
+    error.textContent = '';
+  }
+
+  if (n < 1 || n > 4) return;
+
+  state.currentStep = n;
+
+  document.querySelectorAll('.step-panel').forEach((p, i) => {
+    p.classList.toggle('active', i + 1 === n);
+  });
+
+  renderProgress();
+
+  if (n === 3) renderSplitStep();
+  if (n === 4) renderSettle();
+}
+// ══════════════════════════════════════════════
+//  STEP 1: ITEMS
+// ══════════════════════════════════════════════
+function addItem(){
+  const nameInput = document.getElementById('item-name');
+  const amountInput = document.getElementById('item-amount');
+
+  const name = nameInput.value.trim();
+  const price = amountInput.value.trim();
+
+  // Inline red message helper - creates the div once, reuses it after that
+  function showItemError(msg) {
+    let error = document.getElementById('item-error');
+    if (!error) {
+      error = document.createElement('div');
+      error.id = 'item-error';
+      error.style.color = 'red';
+      error.style.fontSize = '14px';
+      error.style.marginTop = '8px';
+      document.getElementById('continue-btn').insertAdjacentElement('beforebegin', error);
+    }
+    error.textContent = msg;
+  }
+
+  // Empty field check - user's requested wording, checked BEFORE the
+  // letters/numbers-only regex so an empty click never shows the "letters only" warning
+  if (name === '' || price === '') {
+    showItemError("Please enter the required details first.");
+    return;
+  }
+
+  // Only item names allowed
+  // Numbers-only or symbols not allowed
+  if (!/^[A-Za-z\s]+$/.test(name)) {
+    showItemError("Item name must contain only letters. Numbers and symbols are not allowed.");
+    return;
+  }
+  // Amount validation
+  // Only numeric values allowed
+  if (!/^\d+(\.\d+)?$/.test(price)) {
+    showItemError("Please enter only numbers, symbols and alphabets are not allowed.");
+    return;
+  }
+
+  // Successful add - clear any previous error message
+  showItemError('');
+
+  // paidBy ab ek array hai (item ko kitne bhi log milke pay kar sakte hai)
+  // Step 2 me "Who paid for each item?" section me assign hoga
+  state.items.push({
+    name: name,
+    price: parseFloat(price),
+    paidBy: []});
+
+  nameInput.value = '';
+  amountInput.value = '';
+
+  renderItems();
+}
+
+function removeItem(i) {
+  state.items.splice(i, 1);
+  renderItems();
+}
+
+function getTotal() { return state.items.reduce((s, it) => s + it.price, 0); }
+// Sab items ke payers mila kar unique list deta hai (multi-payer support ke liye)
+function getPayersList() {
+  const set = new Set();
+  state.items.forEach(it => (it.paidBy || []).forEach(n => set.add(n)));
+  return [...set];
+}
+function fmt(n) { return '₹' + parseFloat(n).toFixed(2); }
+
+function renderItems() {
+  const list = document.getElementById('items-list');
+  list.innerHTML = '';
+  state.items.forEach((it, i) => {
+    const row = document.createElement('div');
+    row.className = 'item-row';
+    row.innerHTML = `<span class="item-name">${it.name}</span>
+      <span class="item-price">${fmt(it.price)}</span>
+      <button class="item-del" onclick="removeItem(${i})">✕</button>`;
+    list.appendChild(row);
+  });
+  const total = getTotal();
+  const totalDiv = document.getElementById('items-total');
+  totalDiv.style.display = state.items.length ? '' : 'none';
+  document.getElementById('item-count-label').textContent = state.items.length + ' ITEMS';
+  document.getElementById('total-display').textContent = fmt(total);
+
+  const btn = document.getElementById('continue-btn');
+btn.disabled = false;
+btn.textContent = `Continue → (${fmt(total)})`;
+  btn.textContent = `Continue → (${fmt(total)})`;
+
+  renderItemPayers(); // items badle to "who paid for each item" list bhi refresh ho
+}
+
+function parseAI() {
+  const text = document.getElementById('paste-area').value.trim();
+  if (!text) { alert('Please paste some text first!'); return; }
+  const regex = /([a-zA-Z\s]+?)\s*[₹Rs.]+\s*(\d+(?:\.\d+)?)/gi;
+  let match; let found = 0;
+  while ((match = regex.exec(text)) !== null) {
+    const name = match[1].trim();
+    const price = parseFloat(match[2]);
+    if (name && !isNaN(price) && price > 0) { state.items.push({name, price}); found++; }
+  }
+  if (found) { renderItems(); document.getElementById('paste-area').value = ''; }
+  else alert('No item detected. Format example: Pizza ₹450, Coke ₹120');
+}
+
+// CHANGED: Fixed handleBillPhoto to show file name and simulation
+setTimeout(() =>
+ {
+  // dummy OCR result (calculation working version)
+  state.items.push(
+   
+  );
+
+  renderItems();
+
+  statusDiv.textContent = "Bill processed successfully";
+  statusDiv.style.color = "var(--green)";
+}, 1000);
+
+// ══════════════════════════════════════════════
+//  STEP 2: PEOPLE
+// ══════════════════════════════════════════════
+function addPerson() {
+  const name = document.getElementById('person-name').value.trim();
+  if (!name) { alert('Please enter a name!'); return; }
+  if (!/^[a-zA-Z\s]+$/.test(name)) {
+  alert("Name must only contain letters");
+  return;
+}
+  if (state.people.find(p => p.name.toLowerCase() === name.toLowerCase())) { alert('This name already exists!'); return; }
+  state.people.push({ name });
+  document.getElementById('person-name').value = '';
+  renderPeople();
+}
+
+function removePerson(i) {
+  state.people.splice(i, 1);
+  renderPeople();
+}
+
+function renderPeople() {
+  const list = document.getElementById('people-list');
+  list.innerHTML = '';
+  state.people.forEach((p, i) => {
+    const color = COLORS[i % COLORS.length];
+    const row = document.createElement('div');
+    row.className = 'person-row';
+    row.innerHTML = `
+      <div class="avatar" style="background:${color}22;color:${color}">${p.name[0].toUpperCase()}</div>
+      <div class="person-name">${p.name}</div>
+      <button class="person-del" onclick="removePerson(${i})">✕</button>`;
+    list.appendChild(row);
+  });
+  renderItemPayers();
+}
+// Generates checkboxes for each item, allowing one or multiple members to contribute to its payment.
+// Supports any number of members and items.
+
+function renderItemPayers() {
+  const wrap = document.getElementById('item-payers-list');
+  if (!wrap) return;
+  wrap.innerHTML = '';
+
+  if (state.items.length === 0) {
+    wrap.innerHTML = `<div style="color:var(--muted);font-size:.85rem">Pehle Step 1 me items add karo</div>`;
+    return;
+  }
+  if (state.people.length === 0) {
+    wrap.innerHTML = `<div style="color:var(--muted);font-size:.85rem">Please add members first.</div>`;
+    return;
+  }
+
+  state.items.forEach((it, i) => {
+    // agar koi purana payer ab list me hi nahi hai to hata do
+    it.paidBy = (it.paidBy || []).filter(name => state.people.some(p => p.name === name));
+
+    const box = document.createElement('div');
+    box.style.cssText = 'background:var(--surface2);border-radius:var(--radius-sm);padding:10px 14px;margin-bottom:8px';
+
+    const each = it.paidBy.length ? (it.price / it.paidBy.length) : 0;
+
+    const chips = state.people.map(p => {
+      const checked = it.paidBy.includes(p.name) ? 'checked' : '';
+      return `<label style="display:inline-flex;align-items:center;gap:5px;background:var(--surface3);border-radius:16px;padding:4px 10px;margin:3px 6px 0 0;font-size:.82rem;cursor:pointer">
+        <input type="checkbox" ${checked} onchange="toggleItemPayer(${i}, '${p.name}')"> ${p.name}
+      </label>`;
+    }).join('');
+
+    box.innerHTML = `
+      <div style="display:flex;justify-content:space-between;font-weight:600">
+        <span>${it.name}</span>
+        <span style="color:var(--green)">${fmt(it.price)}${it.paidBy.length ? ` (${fmt(each)} each)` : ''}</span>
+      </div>
+      <div style="margin-top:6px">${chips}</div>`;
+    wrap.appendChild(box);
+  });
+}
+
+function toggleItemPayer(itemIndex, personName) {
+  const it = state.items[itemIndex];
+  if (!it) return;
+  if (!it.paidBy) it.paidBy = [];
+  if (it.paidBy.includes(personName)) {
+    it.paidBy = it.paidBy.filter(n => n !== personName);
+  } else {
+    it.paidBy.push(personName);
+  }
+  renderItemPayers();
+}
+
+function validatePeopleAndGo() {
+  const err = document.getElementById('people-error');
+  const paidErr = document.getElementById('paidby-error');
+  const nameInput = document.getElementById('person-name');
+  const leftoverName = nameInput.value.trim();
+
+  if (state.people.length < 2) {
+    err.textContent = '⚠ Add at least 2 people to continue';
+    err.style.display = '';
+    return;
+  }
+
+  // Data typed in the name field but "Add" was never pressed - same behaviour as Step 1
+  if (leftoverName !== '') {
+    err.textContent = 'Click "Add" first or clear the fields.';
+    err.style.display = '';
+    return;
+  }
+  err.style.display = 'none';
+
+  // Each item must have at least one payer; otherwise, it is not possible to determine who paid for it.
+  const missing = state.items.some(it => !it.paidBy || it.paidBy.length === 0);
+  if (missing) { paidErr.style.display = ''; return; }
+  paidErr.style.display = 'none';
+
+  goToStep(3);
+}
+
+function importFromGroup(val) {
+  if (!val) return;
+  const grp = groups.find(g => g.name === val);
+  if (!grp) return;
+  grp.members.forEach(m => {
+    if (!state.people.find(p => p.name.toLowerCase() === m.toLowerCase())) {
+      state.people.push({ name: m });
+    }
+  });
+  renderPeople();
+  document.getElementById('group-import-select').value = '';
+}
+
+function refreshGroupImportSelect() {
+  const sel = document.getElementById('group-import-select');
+  sel.innerHTML = '<option value="">Import from a Group...</option>';
+  groups.forEach(g => {
+    const opt = document.createElement('option');
+    opt.value = g.name; opt.textContent = `${g.name} (${g.members.length} members)`;
+    sel.appendChild(opt);
+  });
+}
+
+// ══════════════════════════════════════════════
+//  STEP 3: SPLIT
+// ══════════════════════════════════════════════
+function switchSplitMethod(m) {
+  state.splitMethod = m;
+  document.querySelectorAll('.split-tab').forEach((t, i) => {
+    t.classList.toggle('active', ['equal','byitem','bypct'][i] === m);
+  });
+  ['equal','byitem','bypct'].forEach(id => {
+    document.getElementById('method-' + id).style.display = id === m ? '' : 'none';
+  });
+  if (m === 'equal') renderEqual();
+  if (m === 'byitem') renderByItem();
+  if (m === 'bypct') renderByPct();
+  updateSettleBtn();
+}
+
+function renderSplitStep() {
+  const total = getTotal();
+  document.getElementById('split-subtitle').textContent =
+    `Dividing ${fmt(total)} among ${state.people.length} people`;
+
+  state.people.forEach(p => { if (!state.assignments[p.name]) state.assignments[p.name] = []; });
+  const equalPct = +(100 / state.people.length).toFixed(2);
+  state.people.forEach(p => { if (!state.percentages[p.name]) state.percentages[p.name] = equalPct; });
+
+  switchSplitMethod(state.splitMethod);
+}
+
+function renderEqual() {
+  const total = getTotal();
+  const n = state.people.length;
+  const each = n > 0 ? total / n : 0;
+  document.getElementById('equal-formula').textContent = `${fmt(total)} ÷ ${n} = ${fmt(each)} each`;
+  const cards = document.getElementById('equal-cards');
+  cards.innerHTML = '';
+  state.people.forEach((p, i) => {
+    const color = COLORS[i % COLORS.length];
+    const div = document.createElement('div');
+    div.className = 'person-card';
+    div.innerHTML = `<div class="avatar" style="background:${color}22;color:${color}">${p.name[0].toUpperCase()}</div>
+      <div>${p.name}</div>
+      <div class="amt">${fmt(each)}</div>`;
+    cards.appendChild(div);
+  });
+}
+
+// ─── BY ITEM ───
+let draggedItem = null;
+let dragSource = null;
+
+function renderByItem() {
+  const assigned = new Set();
+  Object.values(state.assignments).forEach(arr => arr.forEach(it => assigned.add(it._id)));
+
+  if (!state._itemIds) {
+    state._itemIds = state.items.map((_, i) => i);
+  }
+  state.items.forEach((it, i) => { it._id = i; });
+
+  const unassigned = state.items.filter(it => !Object.values(state.assignments).some(arr => arr.some(a => a._id === it._id)));
+
+  const pool = document.getElementById('unassigned-items');
+  pool.innerHTML = '';
+  document.getElementById('unassigned-title').textContent = `UNASSIGNED (${unassigned.length})`;
+  unassigned.forEach(it => {
+    const div = makeDragItem(it);
+    pool.appendChild(div);
+  });
+
+  const zones = document.getElementById('person-drop-zones');
+  zones.innerHTML = '';
+  state.people.forEach((p, i) => {
+    const color = COLORS[i % COLORS.length];
+    const zone = document.createElement('div');
+    zone.className = 'person-drop-card';
+    zone.dataset.person = p.name;
+    zone.addEventListener('dragover', e => { e.preventDefault(); zone.classList.add('drag-over'); });
+    zone.addEventListener('dragleave', () => zone.classList.remove('drag-over'));
+    zone.addEventListener('drop', e => { e.preventDefault(); zone.classList.remove('drag-over'); dropOnPerson(p.name); });
+
+    const assignedItems = state.assignments[p.name] || [];
+    const total = assignedItems.reduce((s, a) => s + a.price, 0);
+
+    zone.innerHTML = `
+      <div class="drop-header">
+        <div class="avatar" style="background:${color}22;color:${color}">${p.name[0].toUpperCase()}</div>
+        <strong>${p.name}</strong>
+        <div class="drop-total">${fmt(total)}</div>
+      </div>
+      <div class="assigned-items-list"></div>`;
+
+    const listContainer = zone.querySelector('.assigned-items-list');
+    assignedItems.forEach(a => {
+      const di = makeDragItem(a, p.name);
+      listContainer.appendChild(di);
+    });
+
+    zones.appendChild(zone);
+  });
+
+  const poolDiv = document.querySelector('.unassigned-pool');
+  poolDiv.addEventListener('dragover', e => e.preventDefault());
+  poolDiv.addEventListener('drop', e => { e.preventDefault(); dropOnPool(); });
+
+  updateAssignWarn(unassigned.length);
+  updateSettleBtn();
+}
+
+function makeDragItem(it, fromPerson = null) {
+  const div = document.createElement('div');
+  div.className = 'drag-item';
+  div.draggable = true;
+  div.innerHTML = `<span>${it.name}</span><span style="color:var(--green);font-weight:700">${fmt(it.price)}</span>`;
+  div.addEventListener('dragstart', () => { draggedItem = it; dragSource = fromPerson; div.classList.add('dragging'); });
+  div.addEventListener('dragend', () => div.classList.remove('dragging'));
+  return div;
+}
+
+function dropOnPerson(personName) {
+  if (!draggedItem) return;
+  if (dragSource) {
+    state.assignments[dragSource] = state.assignments[dragSource].filter(a => a._id !== draggedItem._id);
+  }
+  if (!state.assignments[personName]) state.assignments[personName] = [];
+  if (!state.assignments[personName].find(a => a._id === draggedItem._id)) {
+    state.assignments[personName].push(draggedItem);
+  }
+  draggedItem = null; dragSource = null;
+  renderByItem();
+}
+
+function dropOnPool() {
+  if (!draggedItem || !dragSource) return;
+  state.assignments[dragSource] = state.assignments[dragSource].filter(a => a._id !== draggedItem._id);
+  draggedItem = null; dragSource = null;
+  renderByItem();
+}
+
+function updateAssignWarn(unassignedCount) {
+  const warn = document.getElementById('assign-warn');
+  if (unassignedCount > 0) {
+    warn.style.display = 'flex';
+    document.getElementById('assign-warn-text').textContent =
+      `${unassignedCount} item${unassignedCount > 1 ? 's' : ''} unassigned – assign all before continuing`;
+  } else {
+    warn.style.display = 'none';
+  }
+}
+
+// ─── BY % ───
+function renderByPct() {
+  const total = getTotal();
+  const container = document.getElementById('pct-sliders');
+  container.innerHTML = '';
+  state.people.forEach((p, i) => {
+    const color = COLORS[i % COLORS.length];
+    const pct = state.percentages[p.name] || 0;
+    const amt = (total * pct / 100).toFixed(2);
+    const div = document.createElement('div');
+    div.className = 'percent-card';
+    div.innerHTML = `
+      <div class="percent-header">
+        <div class="avatar" style="background:${color}22;color:${color}">${p.name[0].toUpperCase()}</div>
+        <strong>${p.name}</strong>
+        <div class="percent-val"><strong>${pct.toFixed(1)}%</strong> <span class="pct-amt">${fmt(amt)}</span></div>
+      </div>
+      <div class="slider-wrap">
+        <input type="range" min="0" max="100" step="0.5" value="${pct}"
+          oninput="updatePct('${p.name}', parseFloat(this.value))">
+      </div>`;
+    container.appendChild(div);
+  });
+  updatePctBar();
+}
+
+function updatePct(personName, val) {
+  const others = state.people.filter(p => p.name !== personName);
+  const remaining = 100 - val;
+  const eachOther = others.length > 0 ? remaining / others.length : 0;
+  state.percentages[personName] = val;
+  others.forEach(p => state.percentages[p.name] = Math.max(0, eachOther));
+  renderByPct();
+  updateSettleBtn();
+}
+
+function updatePctBar() {
+  const total = Object.values(state.percentages).reduce((s, v) => s + v, 0);
+  const fill = document.getElementById('pct-fill');
+  const label = document.getElementById('pct-total-text');
+  fill.style.width = Math.min(total, 100) + '%';
+  fill.classList.toggle('over', total > 100.1);
+  label.textContent = total.toFixed(1) + '% ' + (Math.abs(total - 100) < 0.5 ? '✓' : '');
+}
+
+function updateSettleBtn() {
+  const btn = document.getElementById('settle-btn');
+  if (state.splitMethod === 'byitem') {
+    const allAssigned = state.items.every(it =>
+      Object.values(state.assignments).some(arr => arr.some(a => a._id === it._id))
+    );
+    btn.disabled = !allAssigned;
+    btn.textContent = allAssigned ? 'See Settlement →' : `Assign ${state.items.filter(it => !Object.values(state.assignments).some(arr => arr.some(a => a._id === it._id))).length} more item(s)...`;
+  } else {
+    btn.disabled = false;
+    btn.textContent = 'See Settlement →';
+  }
+}
+
+// ══════════════════════════════════════════════
+//  STEP 4: SETTLE
+// ══════════════════════════════════════════════
+function goToSettle() {
+  const total = getTotal();
+  const n = state.people.length;
+  let shares = {};
+  let paid = {};
+
+// 1. Calculate the total amount paid by each member.
+//
+// BUG FIX: Previously, `item.paidBy` was never assigned, causing all values in `paid[]`
+// to remain 0. As a result, no creditors were identified and the settlement list
+// was always empty.
+//
+// Each item can now have one or more payers (selected via Step 2 checkboxes).
+// The item's cost is divided equally among all selected payers.
+//
+// This implementation supports any number of members and items.
+  state.people.forEach(p => { paid[p.name] = 0; });
+  state.items.forEach(item => {
+    const payers = item.paidBy || [];
+    if (payers.length === 0) return;
+    const sharePerPayer = item.price / payers.length;
+    payers.forEach(name => {
+      if (paid[name] === undefined) paid[name] = 0;
+      paid[name] += sharePerPayer;
+    });
+  });
+  // 2. Har member ka hissa = calculate based on split method
+  if (state.splitMethod === 'equal') {
+    const each = total / n;
+    state.people.forEach(p => shares[p.name] = each);
+  } else if (state.splitMethod === 'byitem') {
+    state.people.forEach(p => {
+     shares[p.name] = (state.assignments[p.name] || [])
+  .reduce((sum, item) => sum + item.price, 0);
+    });
+  } else {
+    state.people.forEach(p => {
+      shares[p.name] = total * (state.percentages[p.name] / 100);
+    });
+  }
+
+  // 3.// Calculate the final settlement so that members who paid more are reimbursed.
+  state.settlement = [];
+  const balances = state.people.map(p => ({
+    name: p.name,
+    balance: paid[p.name] - shares[p.name] // +ve = should receive, -ve = should pay
+  }));
+
+  // Creditors = jinhe paise milne hain, Debtors = jinhone dene hain
+  let creditors = balances.filter(b => b.balance > 0.01).sort((a, b) => b.balance - a.balance);
+  let debtors = balances.filter(b => b.balance < -0.01).sort((a, b) => a.balance - b.balance);
+
+  while (creditors.length > 0 && debtors.length > 0) {
+    const c = creditors[0];
+    const d = debtors[0];
+    const amount = Math.min(c.balance, Math.abs(d.balance));
+
+    state.settlement.push({ from: d.name, to: c.name, amount: parseFloat(amount.toFixed(2)) });
+
+    c.balance -= amount;
+    d.balance += amount;
+
+    if (c.balance < 0.01) creditors.shift();
+    if (Math.abs(d.balance) < 0.01) debtors.shift();
+  }
+
+  // 4. History record with English payment details for each member
+  const record = {
+    date: new Date().toLocaleDateString(),
+    total: parseFloat(total.toFixed(2)),
+    splitMethod: state.splitMethod,
+    members: state.people.map(p => p.name),
+    memberPayments: state.people.map(p => ({ // NEW: English details
+      name: p.name,
+      paid: parseFloat(paid[p.name].toFixed(2)),
+      share: parseFloat(shares[p.name].toFixed(2)),
+      balance: parseFloat((paid[p.name] - shares[p.name]).toFixed(2))
+    })),
+    settlement: [...state.settlement],
+  };
+  history.unshift(record);
+  if (history.length > 50) history.pop();
+  localStorage.setItem('ss_history', JSON.stringify(history));
+  updateBadges();
+
+  goToStep(4);
+}
+function renderSettle() {
+  document.getElementById('paid-by-tag').textContent = `Paid by ${getPayersList().join(', ')}`;
+  document.getElementById('settle-subtitle').textContent = `${state.settlement.length} payment${state.settlement.length !== 1 ? 's' : ''} needed`;
+
+  const list = document.getElementById('settlement-list');
+  list.innerHTML = '';
+  state.settlement.forEach(s => {
+    const row = document.createElement('div');
+    row.className = 'settle-row';
+    // Requirement 4: English layout
+    row.innerHTML = `<div class="settle-names">${s.from} <span class="settle-arrow">pay</span> ${s.to}</div>
+      <div class="settle-amt">${fmt(s.amount)}</div>`;
+    list.appendChild(row);
+  });
+
+  const splitLabel = { equal: 'Equal Split', byitem: 'By Item', bypct: 'By %' }[state.splitMethod];
+  const summary = document.getElementById('settle-summary');
+  summary.innerHTML = `
+    <div class="summary-cell"><div class="label">TOTAL</div><div class="val">${fmt(getTotal())}</div></div>
+    <div class="summary-cell"><div class="label">PEOPLE</div><div class="val">${state.people.length}</div></div>
+    <div class="summary-cell"><div class="label">SPLIT</div><div class="val" style="font-size:.85rem">${splitLabel}</div></div>`;
+
+  const sel = document.getElementById('save-group-sel');
+  sel.innerHTML = '<option value="">Select group...</option>';
+  groups.forEach(g => {
+    const opt = document.createElement('option');
+    opt.value = g.name; opt.textContent = g.name;
+    sel.appendChild(opt);
+  });
+}
+
+function toggleSaveGroup() {
+  const show = document.getElementById('save-group-chk').checked;
+  document.getElementById('save-group-sel').style.display = show ? '' : 'none';
+  document.getElementById('save-group-btn').style.display = show ? '' : 'none';
+}
+
+function saveToGroup() {
+  const gName = document.getElementById('save-group-sel').value;
+  if (!gName) { alert('Please select a group!'); return; }
+  const grp = groups.find(g => g.name === gName);
+  if (!grp) return;
+  if (!grp.bills) grp.bills = [];
+  grp.bills.unshift({ date: new Date().toLocaleDateString(), total: getTotal(), members: state.people.map(p => p.name), settlement: [...state.settlement] });
+  localStorage.setItem('ss_groups', JSON.stringify(groups));
+  alert(`Bill saved to ${gName}!`);
+}
+
+function copySummary() {
+  const lines = [`SplitSmart Bill Summary`, `Total: ${fmt(getTotal())}`, `Paid by: ${getPayersList().join(', ')}`, ``, `Settlements:`];
+  state.settlement.forEach(s => lines.push(`  ${s.from} pay ${fmt(s.amount)} to ${s.to}`));
+  navigator.clipboard.writeText(lines.join('\n')).then(() => alert('Summary copied to clipboard!'));
+}
+
+function startOver() {
+  state = { currentStep: 1, items: [], people: [], splitMethod: 'equal', assignments: {}, percentages: {}, settlement: [], paidBy: '' };
+  renderItems(); renderPeople(); goToStep(1);
+}
+
+// ══════════════════════════════════════════════
+//  GROUPS
+// ══════════════════════════════════════════════
+let tempGroupMembers = [];
+
+function openNewGroupModal() {
+  tempGroupMembers = [];
+  document.getElementById('group-name-input').value = '';
+  document.getElementById('gm-input').value = '';
+  document.getElementById('gm-list').innerHTML = '';
+  document.getElementById('group-modal').classList.add('open');
+}
+
+function closeGroupModal() { document.getElementById('group-modal').classList.remove('open'); }
+
+function addGroupMember() {
+  const name = document.getElementById('gm-input').value.trim();
+  if (!name) return;
+  if (!isNaN(name)) { alert('Error: Group member names must be text only.'); return; }
+  if (tempGroupMembers.includes(name)) return;
+  tempGroupMembers.push(name);
+  document.getElementById('gm-input').value = '';
+  const list = document.getElementById('gm-list');
+  const chip = document.createElement('span');
+  chip.style.cssText = 'background:var(--surface3);border-radius:20px;padding:4px 12px;font-size:.83rem;display:flex;align-items:center;gap:6px';
+  chip.innerHTML = `${name} <button onclick="removeGM('${name}',this.parentElement)" style="background:none;border:none;color:var(--muted);cursor:pointer">✕</button>`;
+  list.appendChild(chip);
+}
+
+function removeGM(name, el) {
+  tempGroupMembers = tempGroupMembers.filter(m => m !== name);
+  el.remove();
+}
+
+function createGroup() {
+  const name = document.getElementById('group-name-input').value.trim();
+  if (!name) { alert('Please enter a group name!'); return; }
+  if (tempGroupMembers.length === 0) { alert('Please add at least 1 member!'); return; }
+  const emojis = ['🍕','🎉','🏕️','🏖️','💼','🎮','🍺','🎵'];
+  groups.push({ name, members: [...tempGroupMembers], bills: [], emoji: emojis[Math.floor(Math.random()*emojis.length)] });
+  localStorage.setItem('ss_groups', JSON.stringify(groups));
+  closeGroupModal();
+  updateBadges();
+  refreshGroupImportSelect();
+  renderGroups();
+}
+
+function deleteGroup(i) {
+  if (!confirm('Are you sure you want to delete this group?')) return;
+  groups.splice(i, 1);
+  localStorage.setItem('ss_groups', JSON.stringify(groups));
+  updateBadges();
+  refreshGroupImportSelect();
+  renderGroups();
+}
+
+function renderGroups() {
+  const list = document.getElementById('groups-list');
+  if (groups.length === 0) {
+    list.innerHTML = `<div class="empty-state"><div class="big">👥</div><p>No groups created yet.<br>Click "+ New Group" to get started!</p></div>`;
+    return;
+  }
+  list.innerHTML = '';
+  groups.forEach((g, i) => {
+    const card = document.createElement('div');
+    card.className = 'group-card';
+    const avatars = g.members.slice(0, 4).map((m, j) => `<div class="mini-avatar" style="background:${COLORS[j%COLORS.length]}33;color:${COLORS[j%COLORS.length]}">${m[0].toUpperCase()}</div>`).join('');
+    card.innerHTML = `
+      <div class="group-icon">${g.emoji || '👥'}</div>
+      <div class="group-info">
+        <div class="group-name">${g.name}</div>
+        <div class="group-meta">${g.members.length} member${g.members.length!==1?'s':''} · ${g.bills?g.bills.length:0} Bill${(g.bills&&g.bills.length!==1)?'s':''}</div>
+        <div class="avatars-row">${avatars}</div>
+      </div>
+      <div class="group-actions">
+        <button class="btn btn-danger" style="padding:6px 12px;font-size:.8rem" onclick="deleteGroup(${i})">Delete</button>
+      </div>`;
+    list.appendChild(card);
+  });
+}
+
+// ══════════════════════════════════════════════
+//  HISTORY
+// ══════════════════════════════════════════════
+function renderHistory() {
+  const list = document.getElementById('history-list');
+  const resetBtn = document.getElementById('history-reset-btn');
+  
+  if (history.length === 0) {
+    if (resetBtn) resetBtn.style.display = 'none';
+    list.innerHTML = `<div class="empty-state"><div class="big">📜</div><p>No history available yet.<br>Please split a bill first!</p></div>`;
+    return;
+  }
+  
+  if (resetBtn) resetBtn.style.display = 'block';
+  list.innerHTML = '';
+  
+  history.forEach((h, index) => {
+    const card = document.createElement('div');
+    card.className = 'history-card';
+    
+    // Requirement 4: All payment details clearly described in English showing who paid whom
+    const settleHTML = (h.settlement || []).map(s => `
+      <div class="history-settle-row">
+        ${s.from} pay <strong style="color:var(--green)">${fmt(s.amount)}</strong> to ${s.to}
+      </div>
+    `).join('');
+    
+    card.innerHTML = `
+      <div class="history-top">
+        <div class="history-date">📅 ${h.date}</div>
+        <button class="history-del-btn" onclick="deleteSingleHistory(${index})">×</button>
+      </div>
+      <div class="history-total" style="margin-bottom: 4px;">${fmt(h.total)}</div>
+      <div class="history-members">👥 ${(h.members||[]).join(', ')}</div>
+      <div class="history-settle">${settleHTML}</div>`;
+    list.appendChild(card);
+  });
+}
+
+// Requirement 1 & 3: Reset system to clear all data
+function clearAllHistory() {
+  if (confirm("Are you sure you want to clear the entire history system? This action cannot be undone.")) {
+    history = [];
+    localStorage.setItem('ss_history', JSON.stringify(history));
+    updateBadges();
+    renderHistory();
+  }
+}
+
+// Requirement 2: Delete a single history record item
+function deleteSingleHistory(index) {
+  history.splice(index, 1);
+  localStorage.setItem('ss_history', JSON.stringify(history));
+  updateBadges();
+  renderHistory();
+}
+
+function updateBadges() {
+  document.getElementById('history-badge').textContent = history.length;
+  document.getElementById('groups-badge').textContent = groups.length;
+}
+
+// ══════════════════════════════════════════════
+//  INIT
+// ══════════════════════════════════════════════
+renderProgress();
+renderItems();
+updateBadges();
+refreshGroupImportSelect();
+</script>
+</body>
+</html>
