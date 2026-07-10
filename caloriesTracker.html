@@ -1,0 +1,392 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Calories Tracker</title>
+
+<style>
+
+/* ===== BODY STYLING ===== */
+body {
+    font-family: Arial, sans-serif;
+    margin: 0;
+    padding: 0;
+
+    /* Beautiful Gradient Background */
+    background: linear-gradient(135deg, #667eea, #764ba2);
+    color: white;
+}
+
+/* ===== MAIN CONTAINER ===== */
+.container {
+    max-width: 800px;
+    margin: 30px auto;
+    background: rgba(0,0,0,0.6);
+    padding: 20px;
+    border-radius: 15px;
+}
+
+/* ===== HEADING ===== */
+h1 {
+    text-align: center;
+}
+
+/* ===== INPUTS ===== */
+input,
+select {
+    width: 100%;
+    max-width: 100%;
+    box-sizing: border-box;
+    padding: 10px;
+    margin: 5px 0 15px;
+    border-radius: 8px;
+    border: none;
+}
+
+/* ===== BUTTONS ===== */
+button {
+    padding: 10px;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    margin: 5px;
+}
+
+.add-btn {
+    background: #28a745;
+    color: white;
+}
+
+.reset-btn {
+    background: #dc3545;
+    color: white;
+}
+
+/* ===== TABLE ===== */
+table {
+    width: 100%;
+    margin-top: 20px;
+    border-collapse: collapse;
+    background: white;
+    color: black;
+}
+
+th, td {
+    padding: 10px;
+    border: 1px solid #ddd;
+    text-align: center;
+}
+
+/* ===== PROGRESS BAR ===== */
+.progress-container {
+    width: 100%;
+    background: #ddd;
+    border-radius: 10px;
+    margin-top: 20px;
+}
+
+.progress-bar {
+    height: 20px;
+    width: 0%;
+    background: orange;
+    border-radius: 10px;
+}
+
+/* ===== MESSAGE ===== */
+.message {
+    margin-top: 10px;
+    font-weight: bold;
+}
+
+/* ===== SUCCESS COLOR ===== */
+.success {
+    color: lightgreen;
+}
+
+/* ===== DISCLAIMER ===== */
+.disclaimer {
+    margin-top: 20px;
+    font-size: 12px;
+    text-align: center;
+}
+/* ===== GOAL SECTION ===== */
+.goal-info{
+    margin-top:10px;
+}
+
+.goal-labels{
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    width:100%;
+    margin-top:8px;
+    padding:0;
+}
+
+.goal-labels span{
+    flex:1;
+    text-align:center;
+    font-size:14px;
+    font-weight:bold;
+}
+
+.goal-labels span:first-child{
+    text-align:left;
+}
+
+.goal-labels span:last-child{
+    text-align:right;
+}
+</style>
+</head>
+
+<body>
+
+<div class="container">
+
+<h1>🔥 Calories Tracker</h1>
+<!-- ===== INPUTS ===== -->
+
+<label>⚖️ Weight (kg)</label>
+<input type="number" id="weight" placeholder="enter weight in kg">
+
+<label>🏃 Activity Type</label>
+<select id="activity">
+
+    <optgroup label="Walking">
+        <option value="2.8">Walking (slow pace, ~2 mph)</option>
+        <option value="3.3">Walking (moderate pace, ~3 mph)</option>
+        <option value="5.0">Walking (brisk pace, ~4 mph)</option>
+    </optgroup>
+
+    <optgroup label="Running">
+        <option value="8.3">Running (~5 mph)</option>
+        <option value="9.8">Running (~6 mph)</option>
+        <option value="11.0">Running (~7 mph)</option>
+        <option value="11.8">Running (~8 mph)</option>
+    </optgroup>
+
+    <optgroup label="Bicycling">
+        <option value="4.0">Bicycling (leisure, &lt;10 mph)</option>
+        <option value="6.0">Bicycling (light, 10–12 mph)</option>
+        <option value="8.0">Bicycling (moderate, 12–14 mph)</option>
+        <option value="10.0">Bicycling (vigorous, 14–16 mph)</option>
+    </optgroup>
+
+    <optgroup label="Jumping Rope">
+        <option value="8.8">Jumping Rope (slow)</option>
+        <option value="12.3">Jumping Rope (fast)</option>
+    </optgroup>
+
+    <optgroup label="Weight Lifting">
+        <option value="3.0">Weight Lifting (light)</option>
+        <option value="6.0">Weight Lifting (heavy)</option>
+    </optgroup>
+
+    <optgroup label="Hiking">
+        <option value="6.0">Hiking</option>
+    </optgroup>
+
+    <optgroup label="Sports">
+        <option value="6.0">Basketball (casual)</option>
+        <option value="8.0">Basketball (game)</option>
+        <option value="7.0">Soccer (casual)</option>
+        <option value="10.0">Soccer (game)</option>
+        <option value="5.0">Tennis (doubles)</option>
+        <option value="8.0">Tennis (singles)</option>
+        <option value="3.0">Volleyball (casual)</option>
+        <option value="8.0">Volleyball (competitive)</option>
+    </optgroup>
+
+</select>
+
+<label>⏱️ Duration (minutes)</label>
+<input type="number" id="duration" placeholder="enter duration in minutes">
+
+<label>🎯 Daily Goal (Calories)</label>
+<input type="range" id="goal" min="100" max="900" value="300" oninput="updateGoalValue()">
+<div class="goal-info">
+
+    <div class="goal-labels">
+        <span>100</span>
+        <span>300</span>
+        <span>500</span>
+        <span>700</span>
+        <span>900</span>
+    </div>
+
+    <p>Goal: <span id="goalValue">300</span> Calories</p>
+
+</div>
+<!-- ===== BUTTONS ===== -->
+
+<button class="add-btn" onclick="addActivity()">Add Activity</button>
+<button class="reset-btn" onclick="resetAll()">Reset</button>
+
+<!-- ===== TABLE ===== -->
+
+<table>
+    <thead>
+        <tr>
+            <th>Activity</th>
+            <th>Duration</th>
+            <th>Calories</th>
+            <th>Delete</th>
+        </tr>
+    </thead>
+    <tbody id="tableBody"></tbody>
+</table>
+
+<!-- ===== TOTAL ===== -->
+<h3>Total Calories: <span id="total">0</span></h3>
+
+<!-- ===== PROGRESS BAR ===== -->
+<div class="progress-container">
+    <div class="progress-bar" id="progressBar"></div>
+</div>
+
+<!-- ===== MESSAGE ===== -->
+<p class="message" id="message"></p>
+
+<!-- ===== DISCLAIMER ===== -->
+<p class="disclaimer">
+ℹ️ Calories burned are estimated values. Actual results may vary based on body type and intensity.
+</p>
+
+</div>
+
+<script>
+
+/* ===== VARIABLES ===== */
+let totalCalories = 0;
+
+/* ===== GOAL VALUE UPDATE ===== */
+function updateGoalValue() {
+    document.getElementById("goalValue").innerText =
+        document.getElementById("goal").value;
+}
+
+/* ===== CALORIE CALCULATION ===== */
+function calculateCalories(weight, activity, duration) {
+
+    let met = parseFloat(activity);
+
+    let calories = (met * weight * duration) / 60;
+
+    return Math.round(calories);
+}
+
+/* ===== ADD ACTIVITY ===== */
+function addActivity() {
+
+    let weight = parseFloat(document.getElementById("weight").value);
+    let activity = document.getElementById("activity").value;
+    let duration = parseFloat(document.getElementById("duration").value);
+
+    if (document.getElementById("weight").value.trim() === "") {
+    alert("Please enter Weight value e.g. (65.5, 89)");
+    return;
+}
+
+if (isNaN(weight) || weight <= 0) {
+    alert("Please enter a valid Weight value e.g. (65.5, 89)");
+    return;
+}
+
+if (document.getElementById("duration").value.trim() === "") {
+    alert("Please enter Duration value e.g. (30, 45)");
+    return;
+}
+
+if (isNaN(duration) || duration <= 0) {
+    alert("Please enter a valid Duration value e.g. (30, 45)");
+    return;
+}
+
+    let calories = calculateCalories(weight, activity, duration);
+
+    totalCalories += calories;
+
+    updateTable(activity, duration, calories);
+    updateUI();
+}
+
+/* ===== UPDATE TABLE ===== */
+function updateTable(activity, duration, calories) {
+
+    let table = document.getElementById("tableBody");
+
+    let row = table.insertRow();
+
+    row.insertCell(0).innerText =
+document.getElementById("activity").options[
+document.getElementById("activity").selectedIndex
+].text;
+    row.insertCell(1).innerText = duration + " min";
+    row.insertCell(2).innerText = calories;
+
+    let deleteBtn = document.createElement("button");
+    deleteBtn.innerText = "❌";
+    deleteBtn.onclick = function () {
+        totalCalories -= calories;
+        row.remove();
+        updateUI();
+    };
+
+    row.insertCell(3).appendChild(deleteBtn);
+}
+
+/* ===== UPDATE UI ===== */
+function updateUI() {
+
+    let goal = document.getElementById("goal").value;
+
+    document.getElementById("total").innerText = totalCalories;
+
+    let percent = (totalCalories / goal) * 100;
+
+    document.getElementById("progressBar").style.width =
+        percent > 100 ? "100%" : percent + "%";
+
+    let message = document.getElementById("message");
+
+    if (totalCalories >= goal) {
+        message.innerText ="🎉 Congratulations! You have reached your daily calorie goal.";
+        message.classList.add("success");
+        document.getElementById("progressBar").style.background = "green";
+    } else {
+        let remaining = goal - totalCalories;
+        message.innerText ="You still need " + remaining + " calories to reach your daily goal.";
+        message.classList.remove("success");
+        document.getElementById("progressBar").style.background = "orange";
+    }
+}
+
+/* ===== RESET FUNCTION ===== */
+function resetAll() {
+
+    totalCalories = 0;
+
+    document.getElementById("weight").value = "";
+    document.getElementById("activity").selectedIndex = 0;
+    document.getElementById("duration").value = "";
+
+    document.getElementById("goal").value = 300;
+    document.getElementById("goalValue").innerText = 300;
+
+    document.getElementById("tableBody").innerHTML = "";
+
+    document.getElementById("total").innerText = 0;
+
+    document.getElementById("progressBar").style.width = "0%";
+    document.getElementById("progressBar").style.background = "orange";
+
+    document.getElementById("message").innerText = "";
+    document.getElementById("message").classList.remove("success");
+}
+
+</script>
+
+</body>
+</html>

@@ -1,0 +1,430 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <title>Air Quality Dashboard</title>
+    <!-- Import Moon Dance font from Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Moon+Dance&display=swap" rel="stylesheet">
+    <style>
+        /* Global Styles */
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            margin: 0;
+            padding: 0;
+            font-family: Arial, sans-serif;
+            /* Gradient background: light sky blue to dark sky blue */
+            background:
+radial-gradient(circle at 20% 20%, rgba(0,255,255,.15), transparent 25%),
+radial-gradient(circle at 80% 10%, rgba(0,150,255,.15), transparent 25%),
+radial-gradient(circle at 50% 100%, rgba(111,0,255,.18), transparent 35%),
+linear-gradient(135deg, #030712 0%, #0f172a 45%, #1e3a8a 100%);
+background-attachment: fixed;
+            min-height: 100vh;
+            color: #333;
+        }
+
+        header {
+            text-align: center;
+            padding: 1em 0;
+        }
+
+        .title {
+            font-family: 'Moon Dance', cursive;
+            font-size: 3em;
+            margin: 0;
+            color: #fff;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.3);
+        }
+
+        .controls {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0 1em;
+            margin-bottom: 1em;
+        }
+
+        .left-controls,
+        .right-controls {
+            display: flex;
+            align-items: center;
+        }
+
+        .left-controls label {
+            font-size: 1.2em;
+            color: #fff;
+            margin-right: 0.5em;
+        }
+
+        select {
+            padding: 0.3em;
+            font-size: 1em;
+            border: none;
+            border-radius: 4px;
+            margin-right: 1em;
+        }
+
+        .refresh-button,
+        .choose-location-btn {
+            padding: 0.5em 1em;
+            font-size: 1em;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            background: #fff;
+            color: #333;
+            transition: background 0.3s;
+            margin-right: 0.5em;
+        }
+
+        .refresh-button:hover,
+        .choose-location-btn:hover {
+            background: #e0e0e0;
+        }
+
+        #locationForm {
+            display: none;
+            text-align: center;
+            margin: 0 1em 1em;
+        }
+
+        #locationForm input[type="text"] {
+            padding: 0.5em;
+            font-size: 1em;
+            border: none;
+            border-radius: 4px;
+            margin-right: 0.5em;
+        }
+
+        #locationForm button {
+            padding: 0.5em 1em;
+            font-size: 1em;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            background: #fff;
+            color: #333;
+            transition: background 0.3s;
+        }
+
+        #locationForm button:hover {
+            background: #e0e0e0;
+        }
+
+        /* Displays current or searched location above the data */
+        #locationDisplay {
+            text-align: center;
+            font-size: 1.2em;
+            margin-bottom: 0.5em;
+            color: #fff;
+        }
+
+        /* Status message styling */
+        #status {
+            text-align: center;
+            font-size: 1.2em;
+            margin-bottom: 1em;
+            color: #fff;
+        }
+
+        .cards-container {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            gap: 1em;
+            padding: 1em;
+        }
+
+        /* Glassmorphic card style */
+        .card {
+            background: rgba(255, 255, 255, 0.2);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            border-radius: 10px;
+            padding: 1em;
+            width: 200px;
+            box-shadow: 0 4px 30px rgba(0, 0, 0, 0.1);
+            backdrop-filter: blur(5px);
+            -webkit-backdrop-filter: blur(5px);
+            text-align: center;
+        }
+
+        /* Date styling: grey color, less top margin and more bottom margin */
+        .card h3 {
+            margin-top: 3px;
+            margin-bottom: 50px;
+            color: grey;
+            font-size: 1.3em;
+        }
+
+        .card p {
+            margin: 0.3em 0;
+            font-size: 1.1em;
+        }
+
+        /* Category Colors without bold font weight */
+        .good {
+            color: green;
+        }
+
+        .okay {
+            color: orange;
+        }
+
+        .bad {
+            color: red;
+        }
+
+        /* Error message styling */
+        .error {
+            color: red;
+            text-align: center;
+            font-size: 1.3em;
+            margin-top: 20px;
+        }
+    </style>
+</head>
+
+<body>
+    <header>
+        <h1 class="title">Air Quality Dashboard</h1>
+    </header>
+
+    <!-- Controls Div -->
+    <div class="controls">
+        <div class="left-controls">
+            <label for="forecastDays">Forecast Days:</label>
+            <select id="forecastDays">
+                <option value="1">1</option>
+                <option value="3">3</option>
+                <option value="5" selected>5 (default)</option>
+                <option value="7">7</option>
+            </select>
+            <button class="refresh-button" id="refreshButton" title="Refresh Data">&#x21bb;</button>
+        </div>
+        <div class="right-controls">
+            <button class="choose-location-btn" id="chooseLocationBtn">Choose another location</button>
+        </div>
+    </div>
+
+    <!-- Location Search Form (hidden by default) -->
+    <div id="locationForm">
+        <input type="text" id="locationInput" placeholder="Enter location (e.g. Berlin)">
+        <button id="locationButton">Search</button>
+    </div>
+
+    <!-- Display current location or searched location above the data -->
+    <div id="locationDisplay">Loading current location...</div>
+    <!-- Status message -->
+    <div id="status"></div>
+
+    <!-- Cards Container for Daily Air Quality Data -->
+    <div class="cards-container" id="cardsContainer">
+        <!-- Daily cards will be appended here -->
+    </div>
+
+    <script>
+        // Global variables for current location.
+        let userLat = null;
+        let userLon = null;
+
+        // DOM Element References.
+        const locationDisplay = document.getElementById('locationDisplay');
+        const statusDiv = document.getElementById('status');
+        const forecastDaysSelect = document.getElementById('forecastDays');
+        const refreshButton = document.getElementById('refreshButton');
+        const cardsContainer = document.getElementById('cardsContainer');
+        const chooseLocationBtn = document.getElementById('chooseLocationBtn');
+        const locationForm = document.getElementById('locationForm');
+        const locationInput = document.getElementById('locationInput');
+        const locationButton = document.getElementById('locationButton');
+
+        // Save location to local storage
+        function saveLocation(lat, lon, displayName) {
+            const locationData = { lat, lon, display: displayName };
+            localStorage.setItem('userLocation', JSON.stringify(locationData));
+        }
+
+        // Functions to assign categories based on pollutant levels.
+        function getPM10Category(value) {
+            if (value < 50) {
+                return 'good';
+            } else if (value < 100) {
+                return 'okay';
+            } else {
+                return 'bad';
+            }
+        }
+
+        function getPM25Category(value) {
+            if (value < 12) {
+                return 'good';
+            } else if (value < 35) {
+                return 'okay';
+            } else {
+                return 'bad';
+            }
+        }
+
+        // Fetch air quality data and display daily averages as glassmorphic cards.
+        function fetchData() {
+            const forecastDays = forecastDaysSelect.value;
+            statusDiv.textContent = 'Loading air quality data...';
+            cardsContainer.innerHTML = '';
+
+            // Use current location if available; otherwise, default to Berlin.
+            const lat = userLat || 52.52;
+            const lon = userLon || 13.41;
+
+            const url = `https://air-quality-api.open-meteo.com/v1/air-quality?latitude=${lat}&longitude=${lon}&hourly=pm10,pm2_5&forecast_days=${forecastDays}`;
+
+            fetch(url)
+                .then(response => {
+                    if (!response.ok) throw new Error('Network error');
+                    return response.json();
+                })
+                .then(data => {
+                    statusDiv.textContent = `Air quality data for the next ${forecastDays} day(s)`;
+                    const times = data.hourly.time;
+                    const pm10Arr = data.hourly.pm10;
+                    const pm25Arr = data.hourly.pm2_5;
+
+                    // Group hourly data by date.
+                    const dailyData = {};
+                    times.forEach((timeStr, index) => {
+                        const date = timeStr.split("T")[0];
+                        if (!dailyData[date]) {
+                            dailyData[date] = { pm10: [], pm2_5: [] };
+                        }
+                        dailyData[date].pm10.push(pm10Arr[index]);
+                        dailyData[date].pm2_5.push(pm25Arr[index]);
+                    });
+
+                    // Get the dates in order and limit to the selected forecast days.
+                    const dates = Object.keys(dailyData).sort().slice(0, forecastDays);
+                    dates.forEach(date => {
+                        const pm10Values = dailyData[date].pm10;
+                        const pm25Values = dailyData[date].pm2_5;
+                        const avgPM10 = pm10Values.reduce((sum, value) => sum + value, 0) / pm10Values.length;
+                        const avgPM25 = pm25Values.reduce((sum, value) => sum + value, 0) / pm25Values.length;
+
+                        // Determine the category (color) for each pollutant.
+                        const pm10Class = getPM10Category(avgPM10);
+                        const pm25Class = getPM25Category(avgPM25);
+
+                        // Create a card for the day.
+                        const card = document.createElement('div');
+                        card.className = 'card';
+                        card.innerHTML = `
+              <h3>${date}</h3>
+              <p class="${pm10Class}"><strong>Avg PM10:</strong> ${avgPM10.toFixed(2)}</p>
+              <p class="${pm25Class}"><strong>Avg PM2.5:</strong> ${avgPM25.toFixed(2)}</p>
+            `;
+                        cardsContainer.appendChild(card);
+                    });
+                })
+                .catch(error => {
+                    console.error(error);
+                    statusDiv.textContent = 'Error fetching air quality data.';
+                });
+        }
+
+        // Get user's current location using the Geolocation API.
+        function getLocationAndFetchData() {
+            const storedLocation = localStorage.getItem('userLocation');
+            if (storedLocation) {
+                const { lat, lon, display } = JSON.parse(storedLocation);
+                userLat = lat;
+                userLon = lon;
+                locationDisplay.textContent = display;
+                locationDisplay.style.color = '#fff';
+                fetchData();
+            } else if (navigator.geolocation) {
+                navigator.geolocation.getCurrentPosition(
+                    (position) => {
+                        userLat = position.coords.latitude;
+                        userLon = position.coords.longitude;
+                        locationDisplay.textContent = 'Current location';
+                        locationDisplay.style.color = '#fff';
+                        saveLocation(userLat, userLon, 'Current location');
+                        fetchData();
+                    },
+                    (error) => {
+                        console.warn('Geolocation error:', error);
+                        // Display error message in red at the center of the page.
+                        locationDisplay.textContent = 'Error: Geolocation access denied. Please choose another location.';
+                        locationDisplay.classList.add('error');
+                        locationDisplay.style.color = 'red';
+                    }
+                );
+            } else {
+                locationDisplay.textContent = 'Error: Geolocation is not supported by this browser.';
+                locationDisplay.classList.add('error');
+            }
+        }
+
+        // Geocode a location string using the Nominatim API.
+        function geocodeLocation(location) {
+            const geocodeUrl = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(location)}`;
+          cardsContainer.innerHTML = "";
+statusDiv.textContent = `Searching for location "${location}"...`;
+
+fetch(geocodeUrl)
+                .then(response => response.json())
+                .then(results => {
+                    if (results && results.length > 0) {
+                        const result = results[0];
+                        userLat = parseFloat(result.lat);
+                        userLon = parseFloat(result.lon);
+                        locationDisplay.textContent = `Location: ${result.display_name}`;
+                        locationDisplay.style.color = '#fff';
+                        statusDiv.textContent = 'Loading air quality data...';
+                        fetchData();
+                    } else {
+                    statusDiv.style.color = "red";
+                      statusDiv.textContent = "No matching location was found. Please check the spelling and try again.";
+                    }
+                })
+                .catch(error => {
+                    console.error(error);
+                    statusDiv.textContent = 'Error fetching location data.';
+                });
+        }
+
+        // Event Listeners.
+    refreshButton.addEventListener('click', fetchData);
+forecastDaysSelect.addEventListener('change', fetchData);
+
+locationButton.addEventListener('click', () => {
+
+    const loc = locationInput.value.trim();
+
+    if (loc === "") {
+        statusDiv.style.color = "red";
+        statusDiv.textContent = "Please enter a location before searching.";
+        cardsContainer.innerHTML = "";
+        return;
+    }
+
+    cardsContainer.innerHTML = "";
+
+    geocodeLocation(loc);
+    locationInput.value = "";
+    locationForm.style.display = "none";
+
+});
+    
+        chooseLocationBtn.addEventListener('click', () => {
+            // Toggle the location input form.
+            locationForm.style.display = (locationForm.style.display === 'none' || locationForm.style.display === '') ? 'block' : 'none';
+        });
+
+        // On page load, try to get the current location and fetch data.
+        window.addEventListener('load', getLocationAndFetchData);
+    </script>
+</body>
+
+</html>

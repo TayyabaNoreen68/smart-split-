@@ -1,0 +1,708 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Budget Planner</title>
+
+<!-- Google Font: Moon Dance for headings, Inter for numbers/data -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Moon+Dance&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+<!-- Chart.js CDN -> Pie chart banane ke liye -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+
+
+
+<style>
+  /* ============ CSS VARIABLES (Ledger / Finance theme - ORIGINAL BACKGROUND) ============ */
+  :root{
+    --bg-deep: #16261F;        /* page background - deep pine green */
+    --paper: #FBF6EC;          /* ledger paper color */
+    --paper-line: #E4D9BE;     /* ledger row divider */
+    --ink: #2C2016;            /* dark walnut text */
+    --gold: #C9A227;           /* accent - antique gold */
+    --gold-dark: #A8841C;
+    --sage: #3F6C51;           /* savings / success green */
+    --brick: #A63D40;          /* delete / danger red */
+    --error: #D0342C;          /* validation error red */
+    --muted: #7A6F5D;          /* muted labels */
+  }
+
+  *{ box-sizing: border-box; }
+
+  body{
+    margin:0;
+    min-height:100vh;
+    background: radial-gradient(circle at top, #1E332B, var(--bg-deep));
+    font-family:'Inter', sans-serif;
+    color: var(--ink);
+    padding: 40px 16px;
+    display:flex;
+    justify-content:center;
+  }
+
+  .wrapper{ width:100%; max-width: 950px; }
+
+  /* ============ HEADER ============ */
+  .app-title{
+    text-align:center;
+    font-family:'Moon Dance', cursive;
+    font-size: 3rem;
+    color: var(--gold);
+    margin: 0 0 4px 0;
+    letter-spacing: 1px;
+  }
+  .app-subtitle{
+    text-align:center;
+    color:#CFC6B0;
+    font-size: .85rem;
+    letter-spacing: 3px;
+    text-transform: uppercase;
+    margin-bottom: 28px;
+  }
+
+  /* ============ LEDGER CARD ============ */
+  .ledger{
+    background: var(--paper);
+    border-radius: 14px;
+    padding: 30px;
+    box-shadow: 0 20px 45px rgba(0,0,0,.35);
+    position:relative;
+  }
+  .ledger::before{
+    /* top gold seam line - signature touch */
+    content:"";
+    position:absolute;
+    top:0; left:24px; right:24px;
+    height:4px;
+    background: linear-gradient(90deg, transparent, var(--gold), transparent);
+  }
+
+  /* ============ TOP ROW: INCOME + SAVINGS ============ */
+  .row{
+    display:flex;
+    gap:14px;
+    flex-wrap: wrap;
+    margin-bottom: 14px;
+    align-items:flex-start;
+  }
+  .field{
+    flex:1;
+    min-width: 160px;
+    display:flex;
+    flex-direction:column;
+  }
+  label{
+    font-size:.75rem;
+    text-transform: uppercase;
+    letter-spacing: .5px;
+    color: var(--muted);
+    margin-bottom: 5px;
+  }
+  input[type="text"]{
+    padding: 10px 12px;
+    border: 1px solid var(--paper-line);
+    border-radius: 8px;
+    background: #FFFDF8;
+    font-family:'Inter', sans-serif;
+    font-size: .95rem;
+    color: var(--ink);
+    outline: none;
+    transition: border .2s, box-shadow .2s;
+    width: 100%;
+  }
+  input:focus{
+    border-color: var(--gold);
+    box-shadow: 0 0 0 3px rgba(201,162,39,.18);
+  }
+  /* Jab galat character (letter/symbol) type ho to input laal ho jaye */
+  input.input-invalid{
+    border-color: var(--error) !important;
+    box-shadow: 0 0 0 3px rgba(208,52,44,.2) !important;
+  }
+
+  /* ============ TWO COLUMN LAYOUT: FIXED / VARIABLE ============ */
+  .columns{
+    display:grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 30px;
+    margin-top: 20px;
+  }
+
+  .section-label{
+    font-family:'Moon Dance', cursive;
+    font-size: 1.5rem;
+    margin: 0 0 12px 0;
+    border-bottom: 1px dashed var(--paper-line);
+    padding-bottom: 6px;
+  }
+  .section-label.fixed{ color:#7A5230; }
+  .section-label.variable{ color:#3F6C51; }
+
+  /* ============ ADD BUTTONS ============ */
+  .btn{
+    border:none;
+    border-radius: 8px;
+    padding: 10px 18px;
+    font-family:'Inter', sans-serif;
+    font-weight:600;
+    font-size:.88rem;
+    cursor:pointer;
+    transition: transform .15s, box-shadow .2s, background .2s;
+  }
+  .btn:hover{ transform: translateY(-2px); }
+
+  .btn-add{
+    background: #EFE6CC;
+    color: #6B4226;
+    border: 1px solid var(--gold);
+    width: 100%;
+  }
+  .btn-add:hover{ background: var(--gold); color:#fff; }
+
+  /* ============ EXPENSE ROW (ledger line style) ============ */
+  .expense-row{
+    display:flex;
+    align-items:center;
+    gap:12px;
+    padding: 10px 0;
+    border-bottom: 1px dotted var(--paper-line);
+  }
+  .expense-row .name{
+    flex:1;
+    font-weight:600;
+    font-size:.92rem;
+  }
+  .expense-row input{
+    width: 110px;
+  }
+  .icon-btn{
+    background:none;
+    border:none;
+    cursor:pointer;
+    color: var(--brick);
+    font-size: 1.1rem;
+    padding: 6px 8px;
+    border-radius: 6px;
+    transition: background .2s, transform .15s;
+  }
+  .icon-btn:hover{
+    background: rgba(166,61,64,.12);
+    transform: scale(1.1);
+  }
+
+  /* ============ ERROR TEXT ============ */
+  .error-text{
+    color: var(--error);
+    font-size: .88rem;
+    margin-top: 16px;
+    min-height: 20px;
+    text-align:center;
+    font-weight:700;
+  }
+
+  /* ============ SHOW SUMMARY BUTTON ============ */
+  .btn-primary{
+    background: var(--sage);
+    color:#fff;
+    width:100%;
+    padding: 14px;
+    font-size: 1rem;
+    border-radius: 10px;
+    margin-top: 10px;
+    letter-spacing: .5px;
+  }
+  .btn-primary:hover{ background:#345c43; box-shadow: 0 8px 20px rgba(63,108,81,.35); }
+
+  /* ============ MODAL ============ */
+  .modal-overlay{
+    display:none;
+    position: fixed;
+    inset:0;
+    background: rgba(10,15,12,.6);
+    align-items:center;
+    justify-content:center;
+    z-index: 100;
+    padding: 16px;
+  }
+  .modal-overlay.active{ display:flex; }
+
+  .modal{
+    background: var(--paper);
+    border-radius: 14px;
+    max-width: 900px;
+    width:100%;
+    padding: 28px;
+    position:relative;
+    box-shadow: 0 25px 60px rgba(0,0,0,.4);
+  }
+  .modal h2{
+    font-family:'Moon Dance', cursive;
+    color: var(--gold-dark);
+    font-size: 2rem;
+    margin: 0 0 14px 0;
+    text-align:center;
+  }
+  .close-btn{
+    position:absolute;
+    top: 14px; right:16px;
+    background:none;
+    border:none;
+    font-size: 1.4rem;
+    cursor:pointer;
+    color: var(--muted);
+  }
+  .close-btn:hover{ color: var(--brick); }
+
+  .summary-line{
+    display:flex;
+    justify-content:space-between;
+    padding: 8px 0;
+    border-bottom: 1px dotted var(--paper-line);
+    font-size: .95rem;
+  }
+  .summary-line span:last-child{ font-weight:700; }
+
+.summary-content{
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    gap:40px;
+}
+
+.summary-left{
+    flex:1;
+}
+
+.summary-right{
+    width:360px;
+    display:flex;
+    justify-content:center;
+}
+ #chartCanvas{
+    width:340px !important;
+    height:340px !important;
+}
+
+
+  /* ============ RESPONSIVE ============ */
+  @media (max-width: 620px){
+    .app-title{ font-size: 2.2rem; }
+    .row{ flex-direction: column; }
+    .columns{ grid-template-columns: 1fr; }
+  }
+</style>
+</head>
+<body>
+
+<div class="wrapper">
+
+  <h1 class="app-title">Budget Planner</h1>
+  <p class="app-subtitle">Plan Today, Save Tomorrow</p>
+
+  <div class="ledger">
+
+    <!-- ===== INCOME & SAVINGS ===== -->
+    <div class="row">
+      <div class="field">
+        <label for="income">Total Income (₹)</label>
+        <input type="text" inputmode="decimal" id="income" placeholder="e.g. 50000"
+               oninput="validateNumberField(this)">
+      </div>
+      <div class="field">
+        <label for="savingsPercent">Savings (%)</label>
+        <input type="text" inputmode="decimal" id="savingsPercent" placeholder="e.g. 20"
+               oninput="validateNumberField(this)">
+      </div>
+    </div>
+
+    <!-- ===== FIXED / VARIABLE COLUMNS ===== -->
+    <div class="columns">
+
+      <!-- FIXED EXPENSES -->
+      <div>
+        <h3 class="section-label fixed">Fixed Expenses</h3>
+        <button class="btn btn-add" onclick="quickAddExpense('fixed')">+ Add Fixed Expense</button>
+        <div id="fixedList" style="margin-top:10px;"></div>
+      </div>
+
+      <!-- VARIABLE EXPENSES -->
+      <div>
+        <h3 class="section-label variable">Variable Expenses</h3>
+        <button class="btn btn-add" onclick="quickAddExpense('variable')">+ Add Variable Expense</button>
+        <div id="variableList" style="margin-top:10px;"></div>
+      </div>
+
+    </div>
+
+    <!-- ===== ERROR MESSAGE AREA ===== -->
+    <div class="error-text" id="errorMsg"></div>
+
+    <!-- ===== SHOW SUMMARY BUTTON ===== -->
+    <button class="btn btn-primary" onclick="showSummary()">Show Summary</button>
+
+  </div>
+</div>
+
+<!-- ===== SUMMARY MODAL ===== -->
+<div class="modal-overlay" id="modalOverlay">
+  <div class="modal">
+    <button class="close-btn" onclick="closeSummary()">&times;</button>
+    <h2>Budget Summary</h2>
+<div class="summary-content" id="summaryContent"></div>
+    <div class="summary-left">
+
+        <div class="summary-line">
+            <span>Total Income</span>
+            <span id="sumIncome">₹0</span>
+        </div>
+
+        <div class="summary-line">
+            <span>Total Expenses</span>
+            <span id="sumExpenses">₹0</span>
+        </div>
+
+        <div class="summary-line">
+            <span>Total Savings</span>
+            <span id="sumSavings">₹0</span>
+        </div>
+
+        <div class="summary-line">
+            <span>Remaining Balance</span>
+            <span id="sumRemaining">₹0</span>
+        </div>
+
+    </div>
+
+    <div class="summary-right">
+
+        <canvas id="chartCanvas"></canvas>
+
+    </div>
+
+  </div>
+</div>
+
+<script>
+/* =====================================================================
+   BUDGET PLANNER - JAVASCRIPT LOGIC
+   Har cheez neeche step by step comments ke saath samjhayi gayi hai
+   taaki viva me easily explain kar sako.
+   ===================================================================== */
+
+/* Fixed aur Variable expenses ko store karne ke liye do arrays.
+   Har expense ek object hai: { id, name, amount } */
+let fixedExpenses = [];
+let variableExpenses = [];
+
+/* Unique ID generate karne ke liye counter (delete/update ke time
+   pehchanne ke liye use hota hai) */
+let idCounter = 0;
+
+/* Chart.js ka object globally store karenge taaki purana chart
+   destroy karke naya bana saken (warna chart overlap ho jayega) */
+let pieChartInstance = null;
+
+/* Sirf digits aur ek optional decimal point allow karne wala pattern.
+   Isi ek pattern ko live-typing check aur Show-Summary click check,
+   dono jagah use karenge - taaki dono jagah same rule lage. */
+const NUMBER_PATTERN = /^[0-9]*\.?[0-9]*$/;
+
+/* ---------------------------------------------------------------
+   0) LIVE VALIDATION (jab user type kare - Income, Savings %,
+   Expense Amounts). Har "input" event par check karta hai ke
+   sirf number (aur ek dot decimal) type kiya hai ya nahi.
+   Agar letter ya symbol (a-z, @, #, $, -, + waghera) mila to:
+     -> laal border laga do
+     -> error message dikhao
+     -> galat character ko turant hata do
+   --------------------------------------------------------------- */
+function validateNumberField(inputEl){
+
+    if(NUMBER_PATTERN.test(inputEl.value) || inputEl.value===""){
+
+        inputEl.classList.remove("input-invalid");
+        clearError();
+
+    }else{
+
+        inputEl.classList.add("input-invalid");
+
+    }
+
+}
+ 
+/* ---------------------------------------------------------------
+   0.1) FINAL SAFETY CHECK (Show Summary click par)
+   Live validation zyada tar galat characters already hata deti hai,
+   lekin agar koi field khaali reh jaye ya keyboard se koi trick
+   character (paste, autofill, etc.) chala jaye, to yeh function
+   Show Summary click hote hi ek baar phir se sab number fields
+   check karta hai aur red error dikhata hai.
+   --------------------------------------------------------------- */
+function hasInvalidCharacters() {
+    const invalidField=document.querySelector(".input-invalid");
+
+if(invalidField){
+
+    showError("Please enter numbers (e.g. 39) only.");
+    invalidField.focus();
+    return true;
+
+}
+  const income = document.getElementById('income').value;
+  const savings = document.getElementById('savingsPercent').value;
+
+  if (!NUMBER_PATTERN.test(income) || !NUMBER_PATTERN.test(savings)) {
+    return true;
+  }
+
+  const allExpenseInputs = document.querySelectorAll('.expense-row input');
+  for (const inp of allExpenseInputs) {
+    if (!NUMBER_PATTERN.test(inp.value)) {
+      return true;
+    }
+  }
+  return false;
+}
+
+/* ---------------------------------------------------------------
+   1) QUICK ADD EXPENSE FUNCTION
+   Button click karte hi ek prompt box khulta hai jisme user
+   expense ka naam likhta hai.
+   type = "fixed" ya "variable"
+   --------------------------------------------------------------- */
+function quickAddExpense(type) {
+  const label = type === 'fixed' ? 'Fixed' : 'Variable';
+  const name = prompt('Enter ' + label + ' Expense Name:');
+
+  // Validation: khaali ya cancel kiya hua naam allow nahi
+  if (!name || name.trim() === '') {
+    return;
+  }
+
+  const newExpense = {
+    id: idCounter++,
+    name: name.trim(),
+    amount: 0   // shuru me amount 0 rahega, user baad me bharega
+  };
+
+  if (type === 'fixed') {
+    fixedExpenses.push(newExpense);
+  } else {
+    variableExpenses.push(newExpense);
+  }
+
+  clearError();
+  renderExpenses(); // list ko dobara screen par dikhao
+}
+
+/* ---------------------------------------------------------------
+   2) DELETE EXPENSE FUNCTION
+   --------------------------------------------------------------- */
+function deleteExpense(type, id) {
+  if (type === 'fixed') {
+    fixedExpenses = fixedExpenses.filter(exp => exp.id !== id);
+  } else {
+    variableExpenses = variableExpenses.filter(exp => exp.id !== id);
+  }
+  renderExpenses();
+}
+
+/* ---------------------------------------------------------------
+   3) UPDATE EXPENSE AMOUNT + VALIDATE (jab user amount type kare)
+   --------------------------------------------------------------- */
+function handleAmountInput(inputEl, type, id) {
+  validateNumberField(inputEl); // pehle check karo koi galat character to nahi
+
+  const list = type === 'fixed' ? fixedExpenses : variableExpenses;
+  const expense = list.find(exp => exp.id === id);
+  if (expense) {
+    expense.amount = parseFloat(inputEl.value) || 0;
+  }
+}
+
+/* ---------------------------------------------------------------
+   4) RENDER EXPENSES ON SCREEN
+   Dono list (fixed & variable) ko HTML me dobara draw karta hai
+   --------------------------------------------------------------- */
+function renderExpenses() {
+  renderSingleList('fixed', fixedExpenses, 'fixedList');
+  renderSingleList('variable', variableExpenses, 'variableList');
+}
+
+function renderSingleList(type, list, containerId) {
+  const container = document.getElementById(containerId);
+  container.innerHTML = ''; // pehle purana content hatao
+
+  list.forEach(exp => {
+    const row = document.createElement('div');
+    row.className = 'expense-row';
+    row.innerHTML = `
+      <span class="name">${exp.name}</span>
+      <input type="text" inputmode="decimal" placeholder="0"
+             value="${exp.amount === 0 ? '' : exp.amount}"
+             oninput="handleAmountInput(this, '${type}', ${exp.id})">
+      <button class="icon-btn" title="Delete" onclick="deleteExpense('${type}', ${exp.id})">🗑</button>
+    `;
+    container.appendChild(row);
+  });
+}
+
+/* ---------------------------------------------------------------
+   5) ERROR HANDLING HELPERS
+   --------------------------------------------------------------- */
+function showError(msg) {
+  document.getElementById('errorMsg').textContent = msg;
+}
+function clearError() {
+  document.getElementById('errorMsg').textContent = '';
+}
+
+/* ---------------------------------------------------------------
+   6) CALCULATE BUDGET (Main Logic)
+   Yahan sab totals nikalte hain aur validations check karte hain
+   --------------------------------------------------------------- */
+function calculateBudget() {
+
+  // Sab se pehle check karo ke koi bhi field me letter/symbol to nahi bacha
+  if (hasInvalidCharacters()) {
+    showError('Please enter only numbers. Alphabets and symbols are not allowed.');
+    return null;
+  }
+
+  const income = parseFloat(document.getElementById('income').value) || 0;
+  const savingsPercent = parseFloat(document.getElementById('savingsPercent').value) || 0;
+
+  // Validation: minimum income check
+  if (income <= 0) {
+    showError('Please enter a valid income greater than 0.');
+    return null;
+  }
+
+  // Validation: kam se kam 2 expense entries honi chahiye
+  const totalEntries = fixedExpenses.length + variableExpenses.length;
+  if (totalEntries < 2) {
+    showError('Please add at least two expense entries (fixed + variable).');
+    return null;
+  }
+
+  // Sare fixed + variable expenses ka total nikaalo
+  const totalFixed = fixedExpenses.reduce((sum, e) => sum + e.amount, 0);
+  const totalVariable = variableExpenses.reduce((sum, e) => sum + e.amount, 0);
+  const totalExpenses = totalFixed + totalVariable;
+
+  // Savings amount = income ka savingsPercent %
+  const totalSavings = (income * savingsPercent) / 100;
+
+  // Validation: expenses + savings, income se zyada nahi honi chahiye
+  if (totalExpenses + totalSavings
+   > income) {
+    showError('Your expenses plus savings exceed your income. Please adjust your budget.');
+    return null;
+  }
+
+  const remaining = income - totalExpenses - totalSavings;
+
+  clearError();
+
+  return {
+    income,
+    totalFixed,
+    totalVariable,
+    totalExpenses,
+    totalSavings,
+    remaining
+  };
+}
+
+/* ---------------------------------------------------------------
+   7) SHOW SUMMARY MODAL
+   --------------------------------------------------------------- */
+function showSummary() {
+  const result = calculateBudget();
+  if (!result) return; // agar validation fail hui to yahi ruk jao
+
+  // Modal ke andar values fill karo
+  document.getElementById('sumIncome').textContent = '₹' + result.income.toFixed(2);
+  document.getElementById('sumExpenses').textContent = '₹' + result.totalExpenses.toFixed(2);
+  document.getElementById('sumSavings').textContent = '₹' + result.totalSavings.toFixed(2);
+  document.getElementById('sumRemaining').textContent = '₹' + result.remaining.toFixed(2);
+
+  drawPieChart(result);
+
+  document.getElementById('modalOverlay').classList.add('active');
+}
+
+/* ---------------------------------------------------------------
+   8) CLOSE SUMMARY MODAL
+   --------------------------------------------------------------- */
+function closeSummary() {
+  document.getElementById('modalOverlay').classList.remove('active');
+}
+
+/* ---------------------------------------------------------------
+   9) DRAW PIE CHART using Chart.js
+   --------------------------------------------------------------- */
+function drawPieChart(result) {
+  const ctx = document.getElementById('chartCanvas').getContext('2d');
+
+  // Agar pehle se chart bana hua hai to use destroy karo (overlap na ho)
+  if (pieChartInstance) {
+    pieChartInstance.destroy();
+  }
+
+  pieChartInstance = new Chart(ctx, {
+    type: 'pie',
+    data: {
+      labels: ['Fixed Expenses', 'Variable Expenses', 'Savings', 'Remaining'],
+      datasets: [{
+        data: [result.totalFixed, result.totalVariable, result.totalSavings, result.remaining],
+        backgroundColor: ['#7A5230', '#3F6C51', '#C9A227', '#A63D40']
+      }]
+    },options: {
+    responsive: true,
+    maintainAspectRatio: false,
+    plugins: {
+        legend: {
+            position: 'top',
+            align: 'center',
+            labels: {
+                boxWidth: 15,
+                padding: 20,
+                font: {
+                    size: 13
+                }
+            }
+        }
+    }
+}
+});
+}
+
+
+
+/* ---------------------------------------------------------------
+   INITIAL SETUP: page load hote hi default categories daal do
+   --------------------------------------------------------------- */
+window.onload = function () {
+  fixedExpenses.push(
+    { id: idCounter++, name: 'Housing', amount: 0 },
+    { id: idCounter++, name: 'Utilities', amount: 0 },
+    { id: idCounter++, name: 'Insurance', amount: 0 },
+    { id: idCounter++, name: 'Loan Payments', amount: 0 }
+  );
+  variableExpenses.push(
+    { id: idCounter++, name: 'Food', amount: 0 },
+    { id: idCounter++, name: 'Entertainment', amount: 0 },
+    { id: idCounter++, name: 'Transportation', amount: 0 },
+    { id: idCounter++, name: 'Healthcare', amount: 0 },
+    { id: idCounter++, name: 'Personal Care', amount: 0 }
+  );
+  renderExpenses();
+};
+</script>
+
+</body>
+</html>
