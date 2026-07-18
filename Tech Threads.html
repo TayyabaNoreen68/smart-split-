@@ -1,0 +1,193 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Tech Threads</title>
+
+<style>
+body {
+  background: #F8F9FA;
+  font-family: Arial;
+  margin: 0;
+}
+
+.title {
+  text-align: center;
+  font-family: serif;
+  margin: 20px 0;
+}
+
+.container {
+  display: flex;
+  padding: 20px;
+  gap: 20px;
+}
+
+.sidebar {
+  width: 150px;
+}
+
+.tab {
+  display: block;
+  width: 100%;
+  padding: 10px;
+  margin-bottom: 8px;
+  background: #0D6EFD;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.tab.active {
+  background: #0A58CA;
+}
+
+#keywordInput {
+  width: 100%;
+  padding: 8px;
+  margin-top: 10px;
+}
+
+.stories-grid {
+  flex: 1;
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 15px;
+}
+
+.story-card {
+  background: white;
+  padding: 15px;
+  border-radius: 4px;
+  border: 1px solid #DEE2E6;
+  transition: 0.2s;
+}
+
+.story-card:hover {
+  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+}
+
+.story-title {
+  color: #0D6EFD;
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.story-meta {
+  color: #6C757D;
+  font-size: 0.9rem;
+  margin-top: 10px;
+}
+</style>
+</head>
+
+<body>
+
+<h1 class="title">Tech Threads</h1>
+
+<div class="container">
+
+  <aside class="sidebar">
+    <button class="tab active" data-tab="all">All Stories</button>
+    <button class="tab" data-tab="upvoted">Upvoted</button>
+    <button class="tab" data-tab="commented">Commented</button>
+    <button class="tab" data-tab="keywords">Keywords</button>
+    <input type="text" id="keywordInput" placeholder="Enter keyword" style="display:none">
+  </aside>
+
+  <main class="stories-grid" id="storiesGrid"></main>
+
+</div>
+
+<script>
+
+let allStories = [];
+let upvotedIds = JSON.parse(localStorage.getItem('upvoted')) || [];
+let currentFilter = 'all';
+
+async function fetchStories() {
+  let res = await fetch('https://hn.algolia.com/api/v1/search?tags=front_page&hitsPerPage=30');
+  let data = await res.json();
+  allStories = data.hits;
+  renderStories('all');
+}
+
+function renderStories(filter) {
+  currentFilter = filter;
+
+  let stories = [...allStories];
+
+  if(filter === 'upvoted') {
+    stories = stories.filter(s => upvotedIds.includes(s.objectID));
+  }
+
+  if(filter === 'commented') {
+    stories = stories.filter(s => s.num_comments > 0);
+  }
+
+  if(filter === 'keywords') {
+    let keyword = document.getElementById('keywordInput').value.toLowerCase();
+    stories = stories.filter(s => s.title && s.title.toLowerCase().includes(keyword));
+  }
+
+  let grid = document.getElementById('storiesGrid');
+
+  if(stories.length === 0) {
+    grid.innerHTML = '<p>No stories found</p>';
+    return;
+  }
+
+  grid.innerHTML = stories.map(s => {
+    let myUpvote = upvotedIds.includes(s.objectID) ? 1 : 0;
+
+    return `
+      <div class="story-card">
+        <a href="https://news.ycombinator.com/item?id=${s.objectID}" target="_blank" class="story-title">
+          ${s.title || 'No title'}
+        </a>
+
+        <div class="story-meta">
+          <p>By: ${s.author}</p>
+          <p>Score: ${s.points || 0} | Upvotes: ${myUpvote}
+            <button onclick="upvote('${s.objectID}')">▲</button>
+          </p>
+        </div>
+      </div>
+    `;
+  }).join('');
+}
+
+function upvote(id) {
+  if(!upvotedIds.includes(id)) {
+    upvotedIds.push(id);
+    localStorage.setItem('upvoted', JSON.stringify(upvotedIds));
+  }
+  renderStories(currentFilter);
+}
+
+document.querySelectorAll('.tab').forEach(tab => {
+  tab.onclick = () => {
+
+    document.querySelector('.tab.active').classList.remove('active');
+    tab.classList.add('active');
+
+    let filter = tab.dataset.tab;
+
+    if(filter === 'keywords') {
+      document.getElementById('keywordInput').style.display = 'block';
+      document.getElementById('keywordInput').oninput = () => renderStories('keywords');
+    } else {
+      document.getElementById('keywordInput').style.display = 'none';
+    }
+
+    renderStories(filter);
+  };
+});
+
+fetchStories();
+
+</script>
+
+</body>
+</html>

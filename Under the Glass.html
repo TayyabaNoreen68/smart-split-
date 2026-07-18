@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Under the Glass</title>
+<style>
+body { background:#F5F5F5; font-family:sans-serif; text-align:center; }
+.title { font-family:cursive; font-size:2.5rem; margin:40px 0; }
+
+.start-box {
+  background:white; padding:30px; border-radius:8px;
+  width:400px; margin:0 auto;
+  box-shadow:0 2px 10px rgba(0,0,0,0.1);
+}
+
+.game-screen { display:none; }
+
+.stats { display:flex; justify-content:center; gap:20px; margin-top:10px; }
+
+.game-area {
+  position:relative; height:200px; width:500px;
+  margin:50px auto;
+}
+
+.glass {
+  position:absolute;
+  font-size:100px;
+  cursor:pointer;
+  transition:all 0.5s ease;
+}
+
+#glass0 { left:0; }
+#glass1 { left:200px; }
+#glass2 { left:400px; }
+
+.glass.correct { filter: drop-shadow(0 0 10px green); }
+
+.item-display { font-size:3rem; height:80px; }
+
+.message { font-size:1.2rem; margin:20px; font-weight:bold; }
+
+button { cursor:pointer; padding:8px 15px; }
+</style>
+</head>
+<body>
+
+<h1 class="title">Under the Glass</h1>
+
+<div class="start-box" id="startBox">
+  <label>Choose items:
+    <select id="categorySelect">
+      <option>Fruits</option>
+      <option>Animals</option>
+      <option>Emojis</option>
+      <option>Colors</option>
+    </select>
+  </label>
+  <br><br>
+  <button id="startBtn">Start Game</button>
+</div>
+
+<div class="game-screen" id="gameScreen">
+  <div class="stats">
+    <span>Score: <b id="score">0</b></span>
+    <span>Attempts: <b id="attempts">0</b></span>
+    <span>Category: <b id="catName"></b></span>
+    <button id="restartBtn">Restart</button>
+  </div>
+
+  <div class="message" id="message"></div>
+
+  <div class="game-area">
+    <div class="glass" id="glass0">🥛</div>
+    <div class="glass" id="glass1">🥛</div>
+    <div class="glass" id="glass2">🥛</div>
+  </div>
+
+  <div class="item-display" id="itemDisplay"></div>
+</div>
+
+<script>
+const itemsData = {
+  Fruits: ['🍎 Apple','🍌 Banana','🍊 Orange','🍇 Grapes','🍓 Strawberry'],
+  Animals: ['🐶 Dog','🐱 Cat','🐵 Monkey','🦁 Lion','🐯 Tiger'],
+  Emojis: ['😀 Grinning','😂 Laughing','😍 Heart Eyes','😎 Cool','🤔 Thinking'],
+  Colors: ['🔴 Red','🟢 Green','🔵 Blue','🟡 Yellow','🟣 Purple']
+};
+
+let score = 0, attempts = 0;
+let correctIndex = 0;
+let canGuess = false;
+let currentItem = '', currentCategory = '';
+
+let positions = [0,200,400];
+
+document.getElementById('startBtn').onclick = () => {
+  currentCategory = document.getElementById('categorySelect').value;
+  document.getElementById('startBox').style.display='none';
+  document.getElementById('gameScreen').style.display='block';
+  document.getElementById('catName').innerText=currentCategory;
+  nextRound();
+};
+
+document.getElementById('restartBtn').onclick = () => location.reload();
+
+function nextRound(){
+  canGuess=false;
+  let arr = itemsData[currentCategory];
+  currentItem = arr[Math.floor(Math.random()*arr.length)];
+  document.getElementById('itemDisplay').innerText=currentItem;
+  document.getElementById('message').innerText='Remember this item...';
+
+  setTimeout(()=>{
+    document.getElementById('itemDisplay').innerText='';
+    correctIndex=Math.floor(Math.random()*3);
+    document.getElementById('message').innerText='Shuffling...';
+    shuffle();
+  },2000);
+}
+
+function shuffle(){
+  let count=0;
+  let interval=setInterval(()=>{
+    let i=Math.floor(Math.random()*3);
+    let j=Math.floor(Math.random()*3);
+    if(i!==j){
+      [positions[i],positions[j]]=[positions[j],positions[i]];
+
+      document.getElementById('glass'+i).style.left=positions[i]+'px';
+      document.getElementById('glass'+j).style.left=positions[j]+'px';
+
+      if(correctIndex===i) correctIndex=j;
+      else if(correctIndex===j) correctIndex=i;
+    }
+
+    count++;
+    if(count>=6){
+      clearInterval(interval);
+      document.getElementById('message').innerText='Now guess!';
+      canGuess=true;
+    }
+  },600);
+}
+
+document.querySelectorAll('.glass').forEach((g,idx)=>{
+  g.onclick=()=>{
+    if(!canGuess) return;
+    canGuess=false;
+    attempts++;
+
+    if(idx===correctIndex){
+      score++;
+      document.getElementById('message').innerText='Correct! 🎉';
+      g.classList.add('correct');
+    } else {
+      document.getElementById('message').innerText='Wrong!';
+      document.getElementById('glass'+correctIndex).classList.add('correct');
+    }
+
+    document.getElementById('score').innerText=score;
+    document.getElementById('attempts').innerText=attempts;
+    document.getElementById('itemDisplay').innerText=currentItem;
+
+    setTimeout(()=>{
+      document.querySelectorAll('.glass').forEach(x=>x.classList.remove('correct'));
+      nextRound();
+    },2000);
+  };
+});
+</script>
+
+</body>
+</html>
