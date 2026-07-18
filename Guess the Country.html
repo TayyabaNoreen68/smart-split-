@@ -1,0 +1,229 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Guess the Country</title>
+
+<style>
+
+body{
+margin:0;
+font-family:'Segoe UI',sans-serif;
+background:#f4f6f9;
+text-align:center;
+color:#333;
+}
+
+.container{
+max-width:500px;
+margin:auto;
+padding:20px;
+}
+
+h1{
+margin-bottom:10px;
+}
+
+.top{
+display:flex;
+justify-content:space-between;
+margin-bottom:15px;
+font-weight:bold;
+}
+
+.flag{
+width:220px;
+height:140px;
+object-fit:cover;
+border-radius:10px;
+box-shadow:0 4px 10px rgba(0,0,0,0.2);
+margin:20px auto;
+display:block;
+}
+
+input{
+width:80%;
+padding:10px;
+border-radius:6px;
+border:1px solid #ccc;
+}
+
+button{
+padding:10px 15px;
+border:none;
+border-radius:6px;
+cursor:pointer;
+}
+
+.submit{
+background:#e53935;
+color:white;
+margin-left:5px;
+}
+
+.skip{
+background:#1976d2;
+color:white;
+margin-top:10px;
+}
+
+.hint{
+background:#fff;
+padding:10px;
+border-radius:8px;
+margin-top:15px;
+box-shadow:0 2px 6px rgba(0,0,0,0.1);
+}
+
+.msg{
+margin-top:10px;
+font-weight:bold;
+}
+
+.correct{
+color:green;
+}
+
+.wrong{
+color:red;
+}
+
+</style>
+</head>
+
+<body>
+
+<div class="container">
+
+<h1>Guess the Country</h1>
+
+<div class="top">
+<div>Correct: <span id="score">0</span></div>
+<div>High: <span id="high">0</span></div>
+<div>Time: <span id="time">60</span>s</div>
+</div>
+
+<img id="flag" class="flag">
+
+<div>
+<input id="input" placeholder="Enter country name">
+<button class="submit" onclick="checkAnswer()">Submit</button>
+</div>
+
+<button class="skip" onclick="nextCountry()">Skip</button>
+
+<div class="msg" id="msg"></div>
+
+<div class="hint" id="hint"></div>
+
+</div>
+
+<script>
+
+let countries=[];
+let current=null;
+let score=0;
+let time=60;
+let timer;
+
+const scoreEl=document.getElementById("score");
+const highEl=document.getElementById("high");
+const timeEl=document.getElementById("time");
+const flagEl=document.getElementById("flag");
+const hintEl=document.getElementById("hint");
+const msgEl=document.getElementById("msg");
+const inputEl=document.getElementById("input");
+
+function getHigh(){
+return localStorage.getItem("highScore") || 0;
+}
+
+function setHigh(val){
+localStorage.setItem("highScore",val);
+}
+
+function randomCountry(){
+return countries[Math.floor(Math.random()*countries.length)];
+}
+
+function showCountry(){
+current=randomCountry();
+flagEl.src=current.flags.png;
+
+const hints=[
+`Capital: ${current.capital ? current.capital[0] : "N/A"}`,
+`Region: ${current.continents[0]}`,
+`Week starts on: ${current.startOfWeek}`
+];
+
+hintEl.innerText=hints[Math.floor(Math.random()*hints.length)];
+
+inputEl.value="";
+msgEl.innerText="";
+}
+
+function nextCountry(){
+showCountry();
+}
+
+function checkAnswer(){
+
+const user=inputEl.value.toLowerCase().trim();
+const correct=current.name.common.toLowerCase();
+
+if(user===correct){
+score++;
+scoreEl.innerText=score;
+msgEl.innerText="Correct!";
+msgEl.className="msg correct";
+
+setTimeout(showCountry,800);
+}else{
+msgEl.innerText="Incorrect guess. Try again or skip";
+msgEl.className="msg wrong";
+}
+
+}
+
+function startTimer(){
+timer=setInterval(()=>{
+time--;
+timeEl.innerText=time;
+
+if(time<=0){
+clearInterval(timer);
+endGame();
+}
+},1000);
+}
+
+function endGame(){
+
+msgEl.innerText=`Game Over! Score: ${score}`;
+msgEl.className="msg";
+
+if(score>getHigh()){
+setHigh(score);
+highEl.innerText=score;
+}
+
+}
+
+async function loadData(){
+
+const res=await fetch("https://restcountries.com/v3.1/all?fields=name,flags,startOfWeek,capital,continents");
+countries=await res.json();
+
+showCountry();
+startTimer();
+
+}
+
+highEl.innerText=getHigh();
+
+loadData();
+
+</script>
+
+</body>
+</html>
