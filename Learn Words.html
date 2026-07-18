@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Learn Words</title>
+
+<style>
+body{
+margin:0;
+font-family:Arial;
+background:#f5f5f5;
+}
+
+.title{
+text-align:center;
+font-size:28px;
+padding:15px;
+font-weight:bold;
+}
+
+.container{
+display:flex;
+gap:20px;
+padding:20px;
+}
+
+.left,.right{
+flex:1;
+}
+
+.searchBox{
+display:flex;
+gap:10px;
+margin-bottom:20px;
+}
+
+input{
+flex:1;
+padding:10px;
+border:1px solid #ccc;
+border-radius:5px;
+}
+
+button{
+padding:10px 15px;
+background:black;
+color:white;
+border:none;
+border-radius:5px;
+cursor:pointer;
+}
+
+.card{
+background:white;
+padding:15px;
+border-radius:10px;
+box-shadow:0 2px 8px rgba(0,0,0,0.1);
+border-left:5px solid #2b7cff;
+margin-bottom:10px;
+}
+
+.wordCard{
+background:#eee;
+padding:10px;
+border-radius:10px;
+margin-bottom:10px;
+}
+</style>
+</head>
+
+<body>
+
+<div class="title">Learn Words</div>
+
+<div class="container">
+
+<div class="left">
+
+<div class="searchBox">
+<input id="wordInput" type="text" placeholder="Enter word">
+<button onclick="searchWord()">Search</button>
+</div>
+
+<div id="result"></div>
+
+</div>
+
+<div class="right">
+<h3>Four Words to Learn Today</h3>
+<div id="daily"></div>
+</div>
+
+</div>
+
+<script>
+const words=[
+{
+word:"Houseboat",
+phonetic:"/ˈhaʊsˌboʊt/",
+pos:"noun",
+def:"A vessel used as a dwelling.",
+ex:"They lived on a houseboat."
+},
+{
+word:"Unchurches",
+phonetic:"",
+pos:"verb",
+def:"Removes from church influence.",
+ex:"He unchurches old traditions."
+},
+{
+word:"Freedom",
+phonetic:"",
+pos:"noun",
+def:"Power to act freely.",
+ex:"Everyone wants freedom."
+},
+{
+word:"Journey",
+phonetic:"",
+pos:"noun",
+def:"Act of travelling.",
+ex:"It was a long journey."
+}
+];
+
+document.getElementById("daily").innerHTML=
+words.map(w=>
+`<div class="wordCard">
+<b>${w.word}</b><br>
+${w.phonetic ? "Phonetic: "+w.phonetic+"<br>" : ""}
+Part of Speech: ${w.pos}<br>
+Definition: ${w.def}<br>
+Example: ${w.ex}
+</div>`
+).join("");
+
+function searchWord(){
+let w=document.getElementById("wordInput").value;
+
+document.getElementById("result").innerHTML="Loading...";
+
+fetch("https://api.dictionaryapi.dev/api/v2/entries/en/"+w)
+.then(r=>r.json())
+.then(d=>{
+let data=d[0];
+
+let html=`<div class="card">
+<h2>${data.word}</h2>`;
+
+data.meanings.forEach(m=>{
+html+=`<p><b>Part of Speech:</b> ${m.partOfSpeech}</p>`;
+
+m.definitions.forEach((def,i)=>{
+html+=`
+<p><b>Definition ${i+1}:</b> ${def.definition}</p>
+<p><b>Example:</b> ${def.example ? def.example : "No example available"}</p>
+<hr>`;
+});
+});
+
+html+="</div>";
+
+document.getElementById("result").innerHTML=html;
+})
+.catch(()=>{
+document.getElementById("result").innerHTML=
+`<div class="card">Not Found</div>`;
+});
+}
+</script>
+
+</body>
+</html>

@@ -1,0 +1,205 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Holiday's Tracker</title>
+
+<style>
+
+body{
+margin:0;
+font-family:'Segoe UI',sans-serif;
+background:linear-gradient(135deg,#2193b0,#6dd5ed);
+text-align:center;
+}
+
+.container{
+max-width:800px;
+margin:auto;
+padding:20px;
+}
+
+h1{
+color:white;
+margin-bottom:20px;
+}
+
+.controls{
+background:white;
+padding:15px;
+border-radius:10px;
+margin-bottom:20px;
+}
+
+select,input,button{
+padding:10px;
+margin:5px;
+border-radius:6px;
+border:1px solid #ccc;
+}
+
+button{
+background:#1976d2;
+color:white;
+border:none;
+cursor:pointer;
+}
+
+button:hover{
+background:#0d47a1;
+}
+
+.error{
+color:red;
+margin-top:10px;
+}
+
+.loader{
+display:none;
+margin-top:10px;
+color:white;
+font-weight:bold;
+}
+
+table{
+width:100%;
+background:white;
+border-collapse:collapse;
+margin-top:20px;
+border-radius:10px;
+overflow:hidden;
+}
+
+th{
+background:#1976d2;
+color:white;
+}
+
+th,td{
+padding:10px;
+border:1px solid #ddd;
+}
+
+tr:nth-child(even){
+background:#f2f2f2;
+}
+
+</style>
+</head>
+
+<body>
+
+<div class="container">
+
+<h1>Holiday's Tracker</h1>
+
+<div class="controls">
+
+<select id="country">
+<option value="">-- Select a country --</option>
+</select>
+
+<input type="number" id="year" placeholder="e.g., 2026">
+
+<button id="findBtn">Find Holidays</button>
+
+</div>
+
+<div class="error" id="error"></div>
+<div class="loader" id="loader">Loading...</div>
+
+<div id="holidays-list"></div>
+
+</div>
+
+<script>
+
+const countryEl=document.getElementById("country");
+const yearEl=document.getElementById("year");
+const errorEl=document.getElementById("error");
+const loader=document.getElementById("loader");
+const list=document.getElementById("holidays-list");
+const btn=document.getElementById("findBtn");
+
+let countries=[];
+
+window.onload=async()=>{
+
+try{
+const res=await fetch("https://date.nager.at/api/v3/AvailableCountries");
+countries=await res.json();
+
+countries.forEach(c=>{
+const option=document.createElement("option");
+option.value=c.countryCode;
+option.textContent=c.name;
+countryEl.appendChild(option);
+});
+
+}catch{
+errorEl.innerText="Failed to load countries";
+}
+
+};
+
+btn.addEventListener("click",getHolidays);
+
+async function getHolidays(){
+
+const country=countryEl.value;
+const year=yearEl.value;
+
+errorEl.innerText="";
+list.innerHTML="";
+
+if(!country){
+errorEl.innerText="Please select a country";
+return;
+}
+
+if(!year || year<1800 || year>2050){
+errorEl.innerText="Enter valid year";
+return;
+}
+
+loader.style.display="block";
+
+try{
+
+const res=await fetch(`https://date.nager.at/api/v3/PublicHolidays/${year}/${country}`);
+const data=await res.json();
+
+if(!data.length){
+list.innerHTML="<p>No holidays found for this year</p>";
+loader.style.display="none";
+return;
+}
+
+let html="<table>";
+html+="<tr><th>Date</th><th>Local Name</th><th>English Name</th></tr>";
+
+data.forEach(h=>{
+html+=`
+<tr>
+<td>${h.date}</td>
+<td>${h.localName}</td>
+<td>${h.name}</td>
+</tr>
+`;
+});
+
+html+="</table>";
+
+list.innerHTML=html;
+
+}catch{
+errorEl.innerText="Failed to fetch holidays";
+}
+
+loader.style.display="none";
+}
+
+</script>
+
+</body>
+</html>
