@@ -1,0 +1,218 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Tech Feed</title>
+
+<style>
+body {
+  background: #F5F5F5;
+  font-family: Arial, sans-serif;
+  margin: 0;
+}
+
+.title {
+  text-align: center;
+  padding: 20px;
+  background: #FFFFFF;
+  margin: 0;
+  font-size: 2rem;
+}
+
+.search-section {
+  text-align: center;
+  padding: 20px;
+}
+
+#tagInput {
+  width: 400px;
+  padding: 10px;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+}
+
+button {
+  padding: 8px 12px;
+  margin: 5px;
+  background: #555;
+  color: white;
+  border: none;
+  border-radius: 5px;
+  cursor: pointer;
+}
+
+.tag-chip {
+  background: #E0E0E0;
+  padding: 5px 10px;
+  border-radius: 15px;
+  display: inline-block;
+  margin: 5px;
+}
+
+.main {
+  display: flex;
+  gap: 20px;
+  padding: 0 40px 40px;
+}
+
+.feed {
+  flex: 3;
+}
+
+.saved {
+  flex: 1;
+  background: white;
+  padding: 20px;
+  border-radius: 8px;
+}
+
+.article-card {
+  background: white;
+  border-radius: 8px;
+  margin-bottom: 20px;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+  overflow: hidden;
+}
+
+.article-card img {
+  width: 100%;
+  height: 200px;
+  object-fit: cover;
+}
+
+.card-body {
+  padding: 15px;
+}
+
+</style>
+</head>
+
+<body>
+
+<h1 class="title">Tech Feed</h1>
+
+<div class="search-section">
+  <input type="text" id="tagInput" placeholder="Enter tag (e.g., javascript)">
+  <button id="addTagBtn">Add Tag</button>
+
+  <label>Max time:
+    <select id="maxTime">
+      <option value="7">7 days</option>
+      <option value="30">30 days</option>
+      <option value="0">All time</option>
+    </select>
+  </label>
+
+  <div id="tagChips"></div>
+
+  <button id="searchBtn">Search Articles</button>
+</div>
+
+<div class="main">
+  <div class="feed" id="articlesFeed">Enter a tag and search articles</div>
+
+  <aside class="saved">
+    <h3>Saved Articles</h3>
+    <div id="savedList"></div>
+  </aside>
+</div>
+
+<script>
+
+let tags = [];
+let savedArticles = JSON.parse(localStorage.getItem('savedArticles')) || [];
+
+document.getElementById('addTagBtn').onclick = () => {
+  let tag = document.getElementById('tagInput').value.trim().toLowerCase();
+  if(tag && !tags.includes(tag)) {
+    tags.push(tag);
+    document.getElementById('tagInput').value = '';
+    renderTags();
+  }
+};
+
+function renderTags() {
+  document.getElementById('tagChips').innerHTML =
+    tags.map(t => `<span class="tag-chip">${t} <button onclick="removeTag('${t}')">x</button></span>`).join('');
+}
+
+function removeTag(tag) {
+  tags = tags.filter(t => t !== tag);
+  renderTags();
+}
+
+document.getElementById('searchBtn').onclick = async () => {
+  if(tags.length === 0) {
+    alert('Add at least 1 tag');
+    return;
+  }
+
+  document.getElementById('articlesFeed').innerHTML = 'Loading...';
+
+  let res = await fetch(`https://dev.to/api/articles?tag=${tags[0]}&per_page=30`);
+  let articles = await res.json();
+
+  let maxDays = parseInt(document.getElementById('maxTime').value);
+
+  if(maxDays > 0) {
+    let cutoff = new Date();
+    cutoff.setDate(cutoff.getDate() - maxDays);
+    articles = articles.filter(a => new Date(a.published_at) >= cutoff);
+  }
+
+  renderArticles(articles);
+};
+
+function renderArticles(articles) {
+  if(articles.length === 0) {
+    document.getElementById('articlesFeed').innerHTML = 'No articles found';
+    return;
+  }
+
+  document.getElementById('articlesFeed').innerHTML = articles.map(a => `
+    <div class="article-card">
+      ${a.cover_image ? `<img src="${a.cover_image}">` : ''}
+      <div class="card-body">
+        <h3>${a.title}</h3>
+        <p>by ${a.user.name} • ${a.reading_time_minutes} min read • ${new Date(a.published_at).toLocaleDateString()}</p>
+        <p>${a.description || ''}</p>
+        <a href="${a.url}" target="_blank">Read Article</a>
+        <button onclick='saveArticle(${JSON.stringify(a)})'>Save</button>
+      </div>
+    </div>
+  `).join('');
+}
+
+function saveArticle(article) {
+  if(!savedArticles.find(a => a.id === article.id)) {
+    savedArticles.push(article);
+    localStorage.setItem('savedArticles', JSON.stringify(savedArticles));
+    renderSaved();
+  }
+}
+
+function renderSaved() {
+  let list = document.getElementById('savedList');
+
+  if(savedArticles.length === 0) {
+    list.innerHTML = 'No saved articles';
+    return;
+  }
+
+  list.innerHTML = savedArticles.map(a => `
+    <p>${a.title} <button onclick="removeSaved(${a.id})">x</button></p>
+  `).join('');
+}
+
+function removeSaved(id) {
+  savedArticles = savedArticles.filter(a => a.id !== id);
+  localStorage.setItem('savedArticles', JSON.stringify(savedArticles));
+  renderSaved();
+}
+
+renderSaved();
+
+</script>
+
+</body>
+</html>
