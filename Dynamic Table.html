@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Dynamic Table Pro</title>
+
+<style>
+body{
+  margin:0;
+  font-family:sans-serif;
+  background:linear-gradient(135deg,#222,#555);
+  color:#fff;
+}
+h1{text-align:center;margin:20px 0}
+
+.wrapper{
+  display:flex;
+  gap:20px;
+  padding:20px;
+}
+
+.panel{
+  background:#111;
+  padding:20px;
+  width:30%;
+}
+
+.output{
+  width:70%;
+  display:flex;
+  flex-direction:column;
+  gap:20px;
+}
+
+.box{
+  background:#ddd;
+  color:#000;
+  padding:15px;
+}
+
+input,select{
+  width:100%;
+  margin:5px 0;
+  padding:6px;
+}
+
+button{
+  margin-top:10px;
+  padding:10px;
+  width:100%;
+  border:none;
+  cursor:pointer;
+  background:#ff6b6b;
+  color:#fff;
+}
+
+pre{background:#000;color:#0f0;padding:10px;overflow:auto}
+</style>
+
+<style id="liveStyle"></style>
+</head>
+
+<body>
+
+<h1>Dynamic Table Pro</h1>
+
+<div class="wrapper">
+
+<div class="panel" id="controls"></div>
+
+<div class="output">
+<div class="box" id="preview"></div>
+<div class="box"><pre id="code"></pre></div>
+</div>
+
+</div>
+
+<script>
+const state = {
+  rows:3,
+  cols:3,
+  width:100,
+  widthUnit:'%',
+  height:300,
+  heightUnit:'auto',
+  align:'center',
+  text:'#000000',
+  bg:'#ffffff',
+  borderSize:1,
+  borderStyle:'solid',
+  borderColor:'#000000'
+}
+
+const el = id => document.getElementById(id)
+
+const buildControls = () => {
+  el('controls').innerHTML = `
+    Rows <input type="number" data-key="rows" value="${state.rows}">
+    Cols <input type="number" data-key="cols" value="${state.cols}">
+    Width <input type="number" data-key="width" value="${state.width}">
+    <select data-key="widthUnit">
+      <option>%</option><option>px</option><option>auto</option>
+    </select>
+    Height <input type="number" data-key="height" value="${state.height}">
+    <select data-key="heightUnit">
+      <option>px</option><option>auto</option>
+    </select>
+    Align <select data-key="align">
+      <option>left</option><option selected>center</option><option>right</option>
+    </select>
+    Text <input type="color" data-key="text" value="${state.text}">
+    BG <input type="color" data-key="bg" value="${state.bg}">
+    Border Size <input type="number" data-key="borderSize" value="${state.borderSize}">
+    Style <select data-key="borderStyle">
+      <option>solid</option><option>dashed</option><option>dotted</option>
+    </select>
+    Border Color <input type="color" data-key="borderColor" value="${state.borderColor}">
+    <button id="copy">Copy Code</button>
+    <button id="csv">Download CSV</button>
+  `
+}
+
+const cssGen = () => `
+.table{
+  width:${state.widthUnit==='auto'?'auto':state.width+state.widthUnit};
+  height:${state.heightUnit==='auto'?'auto':state.height+state.heightUnit};
+  border-collapse:collapse;
+  background:${state.bg};
+  color:${state.text};
+}
+.table td{
+  border:${state.borderSize}px ${state.borderStyle} ${state.borderColor};
+  text-align:${state.align};
+  padding:6px;
+}
+`
+
+const tableGen = () => {
+  let rows = ''
+  for(let i=0;i<state.rows;i++){
+    let cols=''
+    for(let j=0;j<state.cols;j++){
+      cols += `<td>${i+1}-${j+1}</td>`
+    }
+    rows += `<tr>${cols}</tr>`
+  }
+  return `<table class="table">${rows}</table>`
+}
+
+const render = () => {
+  const css = cssGen()
+  const html = tableGen()
+
+  el('liveStyle').innerHTML = css
+  el('preview').innerHTML = html
+
+  const full = `<style>\n${css}\n</style>\n\n${html}`
+  el('code').textContent = full
+}
+
+document.addEventListener('input', e=>{
+  if(e.target.dataset.key){
+    state[e.target.dataset.key] = e.target.value
+    render()
+  }
+})
+
+document.addEventListener('click', e=>{
+  if(e.target.id==='copy'){
+    navigator.clipboard.writeText(el('code').textContent)
+  }
+  if(e.target.id==='csv'){
+    let csv=''
+    document.querySelectorAll('tr').forEach(r=>{
+      let row=[]
+      r.querySelectorAll('td').forEach(c=>row.push(c.textContent))
+      csv+=row.join(',')+'\n'
+    })
+    const blob=new Blob([csv])
+    const a=document.createElement('a')
+    a.href=URL.createObjectURL(blob)
+    a.download='table.csv'
+    a.click()
+  }
+})
+
+buildControls()
+render()
+</script>
+
+</body>
+</html>
