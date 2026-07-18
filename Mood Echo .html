@@ -1,0 +1,267 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Mood Echo</title>
+
+<style>
+body{
+margin:0;
+font-family:Arial;
+background:#fff;
+color:#8B4513;
+}
+
+.title{
+text-align:center;
+font-size:3rem;
+font-family:cursive;
+margin:20px 0;
+}
+
+/* LAYOUT */
+.main{
+display:flex;
+gap:20px;
+padding:20px;
+}
+
+/* LEFT */
+.controls{
+width:20%;
+}
+
+.controls button{
+display:block;
+width:100%;
+margin:8px 0;
+padding:10px;
+border:none;
+cursor:pointer;
+border-radius:6px;
+background:#f2f2f2;
+}
+
+.controls button.active{
+background:#007BFF;
+color:white;
+}
+
+/* CENTER */
+.grid{
+width:60%;
+display:grid;
+grid-template-columns:repeat(3,1fr);
+gap:15px;
+}
+
+.card{
+border:1px solid #ddd;
+padding:10px;
+border-radius:8px;
+text-align:center;
+transition:0.3s;
+}
+
+.card:hover{
+transform:scale(1.05);
+}
+
+.card img{
+width:100%;
+border-radius:6px;
+}
+
+.card button{
+margin-top:5px;
+border:none;
+background:none;
+font-size:18px;
+cursor:pointer;
+}
+
+/* RIGHT */
+.liked{
+width:20%;
+border-left:2px solid #eee;
+padding-left:10px;
+}
+
+.song-item{
+display:flex;
+justify-content:space-between;
+margin:5px 0;
+}
+
+/* BUTTON */
+#findBtn{
+width:100%;
+padding:10px;
+margin-top:10px;
+background:#8B4513;
+color:white;
+border:none;
+cursor:pointer;
+border-radius:6px;
+}
+
+/* MOBILE */
+@media(max-width:768px){
+.main{
+flex-direction:column;
+}
+
+.grid{
+grid-template-columns:1fr;
+width:100%;
+}
+
+.controls,.liked{
+width:100%;
+}
+}
+</style>
+</head>
+
+<body>
+
+<div class="title">Mood Echo 🎧</div>
+
+<div class="main">
+
+<!-- LEFT -->
+<div class="controls">
+
+<button data-mood="happy">😀 Happy</button>
+<button data-mood="sad">😢 Sad</button>
+<button data-mood="relaxed">😌 Relaxed</button>
+<button data-mood="party">🎉 Party</button>
+<button data-mood="study">📚 Study</button>
+<button data-mood="romantic">❤️ Romantic</button>
+
+<hr>
+
+<button data-limit="5">05</button>
+<button data-limit="10" class="active">10</button>
+<button data-limit="15">15</button>
+
+<button id="findBtn">Find Music</button>
+
+</div>
+
+<!-- CENTER -->
+<div class="grid" id="grid"></div>
+
+<!-- RIGHT -->
+<div class="liked">
+<h3>Liked Songs</h3>
+<div id="likedList">No liked songs yet.</div>
+</div>
+
+</div>
+
+<script>
+
+let selectedMood=null;
+let selectedLimit=10;
+let songs=[];
+let liked=JSON.parse(localStorage.getItem("likedSongs"))||[];
+
+/* MOOD SELECT */
+document.querySelectorAll("[data-mood]").forEach(btn=>{
+btn.onclick=()=>{
+document.querySelectorAll("[data-mood]").forEach(b=>b.classList.remove("active"));
+btn.classList.add("active");
+selectedMood=btn.dataset.mood;
+}
+});
+
+/* LIMIT SELECT */
+document.querySelectorAll("[data-limit]").forEach(btn=>{
+btn.onclick=()=>{
+document.querySelectorAll("[data-limit]").forEach(b=>b.classList.remove("active"));
+btn.classList.add("active");
+selectedLimit=btn.dataset.limit;
+}
+});
+
+/* FETCH SONGS */
+document.getElementById("findBtn").onclick=async()=>{
+
+if(!selectedMood){
+alert("Please select a mood");
+return;
+}
+
+let res=await fetch(`https://itunes.apple.com/search?term=${selectedMood}&media=music&limit=${selectedLimit}`);
+let data=await res.json();
+
+songs=data.results;
+render();
+}
+
+/* RENDER SONGS */
+function render(){
+
+let grid=document.getElementById("grid");
+grid.innerHTML="";
+
+songs.forEach(s=>{
+
+let isLiked=liked.some(x=>x.trackId===s.trackId);
+
+grid.innerHTML+=`
+<div class="card">
+<img src="${s.artworkUrl100}">
+<p>${s.trackName}</p>
+<span>${s.artistName}</span>
+<button onclick="toggleLike(${s.trackId})">
+${isLiked?"❤️":"♡"}
+</button>
+</div>
+`;
+});
+
+renderLiked();
+}
+
+/* LIKE */
+function toggleLike(id){
+
+let song=songs.find(s=>s.trackId===id);
+let index=liked.findIndex(s=>s.trackId===id);
+
+if(index>-1){
+liked.splice(index,1);
+}else{
+liked.push(song);
+}
+
+localStorage.setItem("likedSongs",JSON.stringify(liked));
+render();
+}
+
+/* LIKED LIST */
+function renderLiked(){
+
+let box=document.getElementById("likedList");
+
+if(liked.length===0){
+box.innerHTML="No liked songs yet.";
+return;
+}
+
+box.innerHTML=liked.map(s=>`
+<div class="song-item">
+<span>${s.trackName}</span>
+<button onclick="toggleLike(${s.trackId})">x</button>
+</div>
+`).join("");
+}
+
+renderLiked();
+
+</script>
+
+</body>
+</html>
