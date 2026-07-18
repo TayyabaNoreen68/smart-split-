@@ -1,0 +1,456 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <title>Chasing pellets</title>
+    <!-- Maven Pro font -->
+    <link href="https://fonts.googleapis.com/css2?family=Maven+Pro:wght@400;700&display=swap" rel="stylesheet">
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            background: radial-gradient(circle at top, #1a1f4d 0%, #0a0a16 45%, #000000 100%);
+            color: #fff;
+            font-family: sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 10px;
+            height: 100vh;
+        }
+
+        #header {
+            font-family: 'Maven Pro', sans-serif;
+            font-size: 56px;
+            margin-bottom: 8px;
+        }
+
+        #scoreboard {
+            font-family: 'Maven Pro', sans-serif;
+            width: 100%;
+            max-width: 600px;
+            display: flex;
+            justify-content: space-between;
+            font-size: 20px;
+            margin-bottom: 8px;
+        }
+
+        #container {
+            position: relative;
+        }
+
+        canvas {
+            background: #000;
+            border: 2px solid #222;
+            display: block;
+        }
+
+        /* Modal */
+        #modal {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.8);
+            display: none;
+            align-items: center;
+            justify-content: center;
+        }
+
+        #modalContent {
+            background: #111;
+            padding: 20px;
+            border-radius: 8px;
+            text-align: center;
+            font-family: 'Maven Pro', sans-serif;
+            color: #fff;
+            min-width: 200px;
+        }
+
+        #modalContent button {
+            margin-top: 12px;
+            padding: 8px 16px;
+            font-size: 18px;
+            cursor: pointer;
+            font-family: 'Maven Pro', sans-serif;
+        }
+    </style>
+</head>
+<body>
+
+    <div id="header">Pixel Escape</div>
+    <div id="scoreboard">
+        <div id="currentScore">Score: 0</div>
+        <div id="highScore">High Score: 0</div>
+    </div>
+    <div id="container">
+        <canvas id="game"></canvas>
+        <div id="modal">
+            <div id="modalContent">
+                <div id="modalMessage"></div>
+                <button id="playAgain">Play Again</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        (function () {
+            // constants
+            const TILE = 32, ROWS = 17, COLS = 17, wallT = 4;
+            const playerStart = { x: TILE / 2, y: TILE / 2 };
+            const ghostStarts = [
+                { x: (COLS - 1) * TILE - TILE / 2, y: TILE / 2 },
+                { x: TILE / 2, y: (ROWS - 1) * TILE - TILE / 2 },
+                { x: (COLS - 1) * TILE - TILE / 2, y: (ROWS - 1) * TILE - TILE / 2 }
+            ];
+            // DOM
+            const canvas = document.getElementById('game'),
+                ctx = canvas.getContext('2d'),
+                currEl = document.getElementById('currentScore'),
+                highEl = document.getElementById('highScore'),
+                modal = document.getElementById('modal'),
+                modalMsg = document.getElementById('modalMessage'),
+                btn = document.getElementById('playAgain');
+            canvas.width = COLS * TILE; canvas.height = ROWS * TILE;
+
+            // state
+            let hWalls, vWalls, walls, pellets;
+            let player, ghosts;
+            let score, shieldsUsed, highScore, gameOver;
+            let deathAnim = false, deathStart = 0, deathDur = 600;
+            let spawnAnim = false, spawnStart = 0, spawnDur = 600;
+            let shieldColors = [];
+
+            const keys = {};
+            window.addEventListener('keydown', e => keys[e.key] = true);
+            window.addEventListener('keyup', e => keys[e.key] = false);
+
+            // generate maze & pellets
+            function generateMaze() {
+                // walls arrays
+                hWalls = Array.from({ length: ROWS + 1 }, () => Array(COLS).fill(true));
+                vWalls = Array.from({ length: ROWS }, () => Array(COLS + 1).fill(true));
+                const vis = Array.from({ length: ROWS }, () => Array(COLS).fill(false));
+                // DFS carve
+                function carve(r, c) {
+                    vis[r][c] = true;
+                    [{ dr: -1, dc: 0 }, { dr: 1, dc: 0 }, { dr: 0, dc: -1 }, { dr: 0, dc: 1 }]
+                        .sort(() => Math.random() - 0.5)
+                        .forEach(d => {
+                            const nr = r + d.dr, nc = c + d.dc;
+                            if (nr >= 0 && nr < ROWS && nc >= 0 && nc < COLS && !vis[nr][nc]) {
+                                if (d.dr === -1) hWalls[r][c] = false;
+                                if (d.dr === 1) hWalls[r + 1][c] = false;
+                                if (d.dc === -1) vWalls[r][c] = false;
+                                if (d.dc === 1) vWalls[r][c + 1] = false;
+                                carve(nr, nc);
+                            }
+                        });
+                }
+                carve(0, 0);
+                // loops ~15%
+                let cands = [];
+                for (let r = 1; r < ROWS; r++)for (let c = 0; c < COLS; c++) if (hWalls[r][c]) cands.push({ t: 'h', r, c });
+                for (let r = 0; r < ROWS; r++)for (let c = 1; c < COLS; c++) if (vWalls[r][c]) cands.push({ t: 'v', r, c });
+                cands.sort(() => Math.random() - 0.5)
+                    .slice(0, Math.floor(cands.length * 0.15))
+                    .forEach(w => w.t === 'h' ? hWalls[w.r][w.c] = false : vWalls[w.r][w.c] = false);
+                // ensure >=3 exits per cell
+                const dm = [
+                    { dr: -1, dc: 0, chk: (r, c) => hWalls[r][c], rem: (r, c) => hWalls[r][c] = false },
+                    { dr: 1, dc: 0, chk: (r, c) => hWalls[r + 1][c], rem: (r, c) => hWalls[r + 1][c] = false },
+                    { dr: 0, dc: -1, chk: (r, c) => vWalls[r][c], rem: (r, c) => vWalls[r][c] = false },
+                    { dr: 0, dc: 1, chk: (r, c) => vWalls[r][c + 1], rem: (r, c) => vWalls[r][c + 1] = false }
+                ];
+                for (let r = 0; r < ROWS; r++)for (let c = 0; c < COLS; c++) {
+                    function openCount() {
+                        return dm.reduce((s, d) => {
+                            const nr = r + d.dr, nc = c + d.dc;
+                            return s + ((nr >= 0 && nr < ROWS && nc >= 0 && nc < COLS && !d.chk(r, c)) ? 1 : 0);
+                        }, 0);
+                    }
+                    let open = openCount();
+                    while (open < 3) {
+                        const closed = dm.filter(d => {
+                            const nr = r + d.dr, nc = c + d.dc;
+                            return nr >= 0 && nr < ROWS && nc >= 0 && nc < COLS && d.chk(r, c);
+                        });
+                        if (!closed.length) break;
+                        const p = closed[Math.floor(Math.random() * closed.length)];
+                        p.rem(r, c);
+                        open = openCount();
+                    }
+                }
+                // pack walls
+                walls = [];
+                for (let r = 0; r < ROWS + 1; r++)for (let c = 0; c < COLS; c++) {
+                    if (hWalls[r][c]) walls.push({ x: c * TILE, y: r * TILE - wallT / 2, w: TILE, h: wallT });
+                }
+                for (let r = 0; r < ROWS; r++)for (let c = 0; c < COLS + 1; c++) {
+                    if (vWalls[r][c]) walls.push({ x: c * TILE - wallT / 2, y: r * TILE, w: wallT, h: TILE });
+                }
+                // pellets
+                pellets = [];
+                for (let r = 0; r < ROWS; r++)for (let c = 0; c < COLS; c++) {
+                    if (!hWalls[r][c] || !hWalls[r + 1][c] || !vWalls[r][c] || !vWalls[r][c + 1]) {
+                        pellets.push({ x: c * TILE + TILE / 2, y: r * TILE + TILE / 2, r: 4 });
+                    }
+                }
+            }
+
+            // entities init
+            function resetEntities() {
+                player = { ...playerStart, r: TILE / 2 - 4, speed: 3 };
+                ghosts = ghostStarts.map(s => ({ ...s, r: player.r, speed: 1.5 }));
+                spawnAnim = true; spawnStart = performance.now();
+            }
+
+            // BFS distance map from player
+            function buildDistMap() {
+                const N = ROWS * COLS, dist = Array(ROWS).fill(0).map(() => Array(COLS).fill(Infinity));
+                const pr = Math.floor(player.y / TILE), pc = Math.floor(player.x / TILE);
+                const q = [[pr, pc]]; dist[pr][pc] = 0;
+                for (let i = 0; i < q.length; i++) {
+                    const [r, c] = q[i], d0 = dist[r][c];
+                    [[r - 1, c, !hWalls[r][c]], [r + 1, c, !hWalls[r + 1][c]],
+                    [r, c - 1, !vWalls[r][c]], [r, c + 1, !vWalls[r][c + 1]]]
+                        .forEach(([nr, nc, ok]) => {
+                            if (ok && nr >= 0 && nr < ROWS && nc >= 0 && nc < COLS && dist[nr][nc] > d0 + 1) {
+                                dist[nr][nc] = d0 + 1; q.push([nr, nc]);
+                            }
+                        });
+                }
+                return dist;
+            }
+
+            function nextMoves(r, c, dist) {
+                const moves = [];
+                [[r - 1, c, !hWalls[r][c]], [r + 1, c, !hWalls[r + 1][c]],
+                [r, c - 1, !vWalls[r][c]], [r, c + 1, !vWalls[r][c + 1]]]
+                    .forEach(([nr, nc, ok]) => {
+                        if (ok && nr >= 0 && nr < ROWS && nc >= 0 && nc < COLS) {
+                            moves.push({ nr, nc, d: dist[nr][nc] });
+                        }
+                    });
+                moves.sort((a, b) => a.d - b.d);
+                return moves;
+            }
+
+            function moveGhosts() {
+                const dist = buildDistMap();
+                const usedCells = new Set();
+                ghosts.forEach(g => {
+                    const gr = Math.floor(g.y / TILE), gc = Math.floor(g.x / TILE);
+                    const moves = nextMoves(gr, gc, dist);
+                    let pick = moves.find(m => !usedCells.has(m.nr + '_' + m.nc)) || moves[0];
+                    usedCells.add(pick.nr + '_' + pick.nc);
+                    const tx = pick.nc * TILE + TILE / 2, ty = pick.nr * TILE + TILE / 2;
+                    const dx = tx - g.x, dy = ty - g.y, d = Math.hypot(dx, dy) || 1;
+                    moveEnt(g, (dx / d) * g.speed, (dy / d) * g.speed);
+                });
+            }
+
+            function circleRect(cx, cy, cr, rx, ry, rw, rh) {
+                const cx2 = Math.max(rx, Math.min(cx, rx + rw)),
+                    cy2 = Math.max(ry, Math.min(cy, ry + rh)),
+                    dx = cx - cx2, dy = cy - cy2;
+                return dx * dx + dy * dy < cr * cr;
+            }
+
+            function moveEnt(ent, vx, vy) {
+                ent.x += vx;
+                for (let w of walls) if (circleRect(ent.x, ent.y, ent.r, w.x, w.y, w.w, w.h)) { ent.x -= vx; break; }
+                ent.y += vy;
+                for (let w of walls) if (circleRect(ent.x, ent.y, ent.r, w.x, w.y, w.w, w.h)) { ent.y -= vy; break; }
+            }
+
+            function update() {
+                if (gameOver || deathAnim) return;
+                // player move
+                let vx = 0, vy = 0;
+                if (keys.a || keys.ArrowLeft) vx = -player.speed;
+                if (keys.d || keys.ArrowRight) vx = player.speed;
+                if (keys.w || keys.ArrowUp) vy = -player.speed;
+                if (keys.s || keys.ArrowDown) vy = player.speed;
+                if (vx && vy) { vx *= 0.707; vy *= 0.707; }
+                moveEnt(player, vx, vy);
+
+                // collect pellets
+                const prevScore = score;
+                pellets = pellets.filter(p => {
+                    const dx = p.x - player.x, dy = p.y - player.y;
+                    if (dx * dx + dy * dy < (p.r + player.r) ** 2) { score++; return false; }
+                    return true;
+                });
+                if (score !== prevScore) currEl.textContent = 'Score: ' + score;
+
+                const shieldsEarned = Math.floor(score / 15);
+                while (shieldColors.length < shieldsEarned) {
+                    const H = 100 + Math.random() * 80;
+                    const L = 30 + Math.random() * 50;
+                    shieldColors.push(`hsl(${H}, 100%, ${L}%)`);
+                }
+                const shieldsAvail = shieldsEarned - shieldsUsed;
+
+                // move ghosts
+                moveGhosts();
+
+                // collisions
+                for (let g of ghosts) {
+                    const dx = g.x - player.x, dy = g.y - player.y;
+                    if (dx * dx + dy * dy < (g.r + player.r) ** 2) {
+                        if (shieldsAvail > 0) {
+                            shieldsUsed++;
+                            resetEntities();
+                        } else {
+                            // trigger death animation
+                            deathAnim = true; deathStart = performance.now();
+                        }
+                        break;
+                    }
+                }
+
+                if (!deathAnim && pellets.length === 0) {
+                    // win: no death animation
+                    gameOver = true;
+                    showModal(`You Win!\nScore: ${score}`);
+                }
+            }
+
+            function draw() {
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+                if (spawnAnim) {
+                    const t = (performance.now() - spawnStart) / spawnDur;
+                    if (t >= 1) {
+                        spawnAnim = false;
+                    } else {
+                        ctx.fillStyle = 'yellow';
+                        ctx.beginPath();
+                        ctx.arc(player.x, player.y, player.r * t, 0, 2 * Math.PI);
+                        ctx.fill();
+
+                        ctx.fillStyle = 'red';
+                        ghosts.forEach(g => {
+                            ctx.beginPath();
+                            ctx.arc(g.x, g.y, g.r * t, 0, 2 * Math.PI);
+                            ctx.fill();
+                        });
+
+                        return;
+                    }
+                }
+
+                // walls
+                ctx.strokeStyle = '#8888ff'; ctx.lineWidth = wallT; ctx.beginPath();
+                walls.forEach(w => {
+                    if (w.h <= wallT + 0.1) {
+                        ctx.moveTo(w.x, w.y + wallT / 2);
+                        ctx.lineTo(w.x + w.w, w.y + wallT / 2);
+                    } else {
+                        ctx.moveTo(w.x + wallT / 2, w.y);
+                        ctx.lineTo(w.x + wallT / 2, w.y + w.h);
+                    }
+                });
+                ctx.stroke();
+
+                // pellets
+                ctx.fillStyle = '#fff';
+                pellets.forEach(p => {
+                    ctx.beginPath();
+                    ctx.arc(p.x, p.y, p.r, 0, 2 * Math.PI);
+                    ctx.fill();
+                });
+
+                // shields rings
+                const shieldsEarned = Math.floor(score / 15),
+                    shieldsAvail = shieldsEarned - shieldsUsed,
+                    ringThickness = 1;      // no gaps if stroke = spacing
+                ctx.lineWidth = ringThickness;
+
+                for (let i = 0; i < shieldsAvail; i++) {
+                    ctx.strokeStyle = shieldColors[i];  // your random‐green shades
+                    const radius = player.r + ringThickness / 2 + i * ringThickness;
+                    ctx.beginPath();
+                    ctx.arc(player.x, player.y, radius, 0, Math.PI * 2);
+                    ctx.stroke();
+                }
+
+                // player death animation
+                if (deathAnim) {
+                    const t = (performance.now() - deathStart) / deathDur;
+                    if (t >= 1) {
+                        deathAnim = false; gameOver = true;
+                        if (score > highScore) {
+                            highScore = score;
+                            localStorage.setItem('highScore', highScore);
+                            highEl.textContent = 'High Score: ' + highScore;
+                        }
+                        showModal(`Game Over!\nScore: ${score}`);
+                    } else {
+                        const r = player.r * (1 - t);
+                        ctx.fillStyle = 'yellow';
+                        ctx.beginPath();
+                        ctx.arc(player.x, player.y, r, 0, 2 * Math.PI);
+                        ctx.fill();
+                    }
+                    return;
+                }
+
+                // draw player
+                ctx.fillStyle = 'yellow';
+                ctx.beginPath();
+                ctx.arc(player.x, player.y, player.r, 0, 2 * Math.PI);
+                ctx.fill();
+
+                // draw ghosts
+                ctx.fillStyle = 'red';
+                ghosts.forEach(g => {
+                    ctx.beginPath();
+                    ctx.arc(g.x, g.y, g.r, 0, 2 * Math.PI);
+                    ctx.fill();
+                });
+            }
+
+            function showModal(msg) {
+                modalMsg.textContent = msg;
+                modal.style.display = 'flex';
+            }
+
+            function loop() {
+                update();
+                draw();
+                requestAnimationFrame(loop);
+            }
+
+            // play again
+            btn.addEventListener('click', () => {
+                modal.style.display = 'none';
+                initGame();
+            });
+
+            function initGame() {
+                generateMaze();
+                resetEntities();
+                score = 0; shieldsUsed = 0; gameOver = false; deathAnim = false;
+                shieldColors = [];
+                currEl.textContent = 'Score: 0';
+                highScore = parseInt(localStorage.getItem('highScore')) || 0;
+                highEl.textContent = 'High Score: ' + highScore;
+            }
+
+            // start
+            initGame();
+            loop();
+
+        })();
+    </script>
+</body>
+
+</html>
