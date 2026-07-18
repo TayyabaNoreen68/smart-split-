@@ -1,0 +1,255 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Laugh a Lil’</title>
+
+<style>
+
+body{
+margin:0;
+font-family:Arial, sans-serif;
+background:linear-gradient(135deg,#ffe0b2,#ffccbc);
+display:flex;
+min-height:100vh;
+}
+
+.main{
+flex:2;
+padding:20px;
+text-align:center;
+}
+
+h1{
+font-family:cursive;
+margin:10px;
+}
+
+.joke-box{
+margin-top:40px;
+font-size:20px;
+min-height:80px;
+padding:20px;
+}
+
+button{
+padding:10px 15px;
+margin:5px;
+border:none;
+border-radius:8px;
+cursor:pointer;
+color:white;
+}
+
+.red{
+background:#e53935;
+}
+
+.green{
+background:#43a047;
+}
+
+button:hover{
+opacity:0.9;
+}
+
+.reactions button{
+font-size:18px;
+background:#fff;
+color:#000;
+border:1px solid #ccc;
+}
+
+.side{
+flex:1;
+background:white;
+padding:15px;
+border-left:2px solid #eee;
+}
+
+.tabs button{
+width:48%;
+background:#1976d2;
+}
+
+.list{
+margin-top:15px;
+text-align:left;
+max-height:400px;
+overflow:auto;
+}
+
+.item{
+padding:10px;
+border-bottom:1px solid #ddd;
+font-size:14px;
+}
+
+.small{
+font-size:12px;
+color:gray;
+}
+
+.delete{
+color:red;
+cursor:pointer;
+float:right;
+}
+
+</style>
+</head>
+
+<body>
+
+<div class="main">
+
+<h1>Laugh a Lil’</h1>
+<p>Feeling a bit low today?</p>
+
+<div class="joke-box" id="jokeBox">Click "Tell me a joke"</div>
+
+<button class="red" onclick="getJoke()">Tell me a joke</button>
+<button class="green" onclick="saveJoke()">Save Joke</button>
+
+<div class="reactions">
+<button onclick="react('😂')">😂 Funny</button>
+<button onclick="react('😐')">😐 Meh</button>
+<button onclick="react('😒')">😒 Bad</button>
+</div>
+
+</div>
+
+<div class="side">
+
+<div class="tabs">
+<button onclick="showTab('saved')">Saved Jokes</button>
+<button onclick="showTab('reacted')">Reacted Jokes</button>
+</div>
+
+<div class="list" id="list"></div>
+
+</div>
+
+<script>
+
+let currentJoke=null;
+let savedJokes=JSON.parse(localStorage.getItem("savedJokes"))||[];
+let reactedJokes=JSON.parse(localStorage.getItem("reactedJokes"))||[];
+
+const box=document.getElementById("jokeBox");
+const list=document.getElementById("list");
+
+async function getJoke(){
+
+box.innerText="Loading...";
+
+try{
+
+const res=await fetch("https://v2.jokeapi.dev/joke/Any?safe-mode");
+const data=await res.json();
+
+if(data.type==="twopart"){
+currentJoke={
+id:Date.now(),
+type:"twopart",
+setup:data.setup,
+delivery:data.delivery
+};
+
+box.innerText=data.setup;
+
+setTimeout(()=>{
+box.innerText=data.delivery;
+},2000);
+
+}else{
+
+currentJoke={
+id:Date.now(),
+type:"single",
+joke:data.joke
+};
+
+box.innerText=data.joke;
+
+}
+
+}catch{
+box.innerText="Oops! No joke available";
+}
+
+}
+
+function saveJoke(){
+
+if(!currentJoke) return;
+
+let exists=savedJokes.find(j=>j.id===currentJoke.id);
+
+if(exists){
+alert("Already Saved");
+return;
+}
+
+savedJokes.push(currentJoke);
+localStorage.setItem("savedJokes",JSON.stringify(savedJokes));
+
+alert("Joke Saved!");
+}
+
+function react(emoji){
+
+if(!currentJoke) return;
+
+let obj={...currentJoke,reaction:emoji};
+
+reactedJokes.push(obj);
+localStorage.setItem("reactedJokes",JSON.stringify(reactedJokes));
+
+alert("Reaction Saved!");
+}
+
+function showTab(type){
+
+list.innerHTML="";
+
+if(type==="saved"){
+
+savedJokes.forEach(j=>{
+list.innerHTML+=`
+<div class="item">
+${j.type==="twopart"?j.setup+" - "+j.delivery:j.joke}
+<span class="delete" onclick="deleteSaved(${j.id})">X</span>
+</div>`;
+});
+
+}
+
+if(type==="reacted"){
+
+reactedJokes.forEach(j=>{
+list.innerHTML+=`
+<div class="item">
+${j.type==="twopart"?j.setup+" - "+j.delivery:j.joke}
+<div class="small">Reaction: ${j.reaction}</div>
+</div>`;
+});
+
+}
+
+}
+
+function deleteSaved(id){
+
+savedJokes=savedJokes.filter(j=>j.id!==id);
+localStorage.setItem("savedJokes",JSON.stringify(savedJokes));
+showTab("saved");
+
+}
+
+showTab("saved");
+
+</script>
+
+</body>
+</html>

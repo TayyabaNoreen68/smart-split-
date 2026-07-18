@@ -1,0 +1,232 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Meow Meow</title>
+
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+
+<style>
+body{
+margin:0;
+font-family:Arial;
+background:linear-gradient(#FFF5E1,#FFB347);
+overflow:hidden;
+}
+
+.title{
+text-align:center;
+font-size:3rem;
+font-family:cursive;
+margin-top:20px;
+}
+
+.slider{
+display:flex;
+align-items:center;
+justify-content:center;
+gap:40px;
+height:80vh;
+}
+
+img{
+width:420px;
+height:300px;
+object-fit:cover;
+border-radius:15px;
+box-shadow:0 10px 25px rgba(0,0,0,0.3);
+transition:0.4s;
+}
+
+.fact{
+background:#FFD580;
+padding:20px;
+max-width:320px;
+border-radius:20px;
+position:relative;
+box-shadow:0 5px 15px rgba(0,0,0,0.2);
+min-height:120px;
+animation:fade 0.4s;
+}
+
+.fact:after{
+content:'';
+position:absolute;
+bottom:-20px;
+left:30px;
+border:20px solid transparent;
+border-top-color:#FFD580;
+}
+
+.arrow{
+font-size:2.5rem;
+background:none;
+border:none;
+cursor:pointer;
+user-select:none;
+}
+
+.paw{
+position:absolute;
+bottom:10px;
+right:15px;
+font-size:22px;
+cursor:pointer;
+color:white;
+transition:0.3s;
+}
+
+.paw.liked{
+color:#FF4B4B;
+transform:scale(1.2);
+}
+
+#muteBtn{
+position:fixed;
+top:15px;
+right:15px;
+width:40px;
+height:40px;
+border:none;
+border-radius:50%;
+background:white;
+cursor:pointer;
+font-size:18px;
+}
+
+@keyframes fade{
+from{opacity:0;transform:scale(0.95);}
+to{opacity:1;transform:scale(1);}
+}
+
+@media(max-width:768px){
+.slider{
+flex-direction:column;
+height:auto;
+}
+
+img{
+width:90%;
+height:auto;
+}
+}
+</style>
+</head>
+
+<body>
+
+<button id="muteBtn" onclick="toggleMute()">🔊</button>
+
+<div class="title">Meow Meow 🐱</div>
+
+<div class="slider">
+
+<button class="arrow" onclick="prevSlide()">&#10094;</button>
+
+<img id="catImage">
+
+<div class="fact">
+<p id="catFact"></p>
+<div class="paw" onclick="toggleLike()">
+<i class="fas fa-paw" id="pawIcon"></i>
+</div>
+</div>
+
+<button class="arrow" onclick="nextSlide()">&#10095;</button>
+
+</div>
+
+<audio id="catSound">
+<source src="meow.mp3" type="audio/mpeg">
+</audio>
+
+<script>
+
+const catData=[
+{ id:1, img:"https://images.unsplash.com/photo-1518791841217-8f162f1e1131", fact:"Cats sleep for 70% of their lives." },
+{ id:2, img:"https://images.unsplash.com/photo-1574158622682-e40e69881006", fact:"Cats can rotate their ears 180 degrees." },
+{ id:3, img:"https://images.unsplash.com/photo-1561948955-570b270e7c36", fact:"A group of cats is called a clowder." },
+{ id:4, img:"https://images.unsplash.com/photo-1592194996308-7b43878e84a6", fact:"Cats have excellent night vision." },
+{ id:5, img:"https://images.unsplash.com/photo-1511044568932-338cba0ad803", fact:"Cats can jump up to 6 times their length." },
+{ id:6, img:"https://images.unsplash.com/photo-1525253086316-d0c936c814f8", fact:"Cats purr at a frequency that heals bones." },
+{ id:7, img:"https://images.unsplash.com/photo-1533738363-b7f9aef128ce", fact:"Cats can hear ultrasonic sounds." },
+{ id:8, img:"https://images.unsplash.com/photo-1543852786-1cf6624b9987", fact:"Cats spend 50% of their life grooming." },
+{ id:9, img:"https://images.unsplash.com/photo-1518791841217-8f162f1e1131", fact:"Cats use whiskers to measure space." },
+{ id:10, img:"https://images.unsplash.com/photo-1555685812-4b943f1cb0eb", fact:"Each cat has a unique nose print." }
+];
+
+let i=0;
+let liked=JSON.parse(localStorage.getItem("likedCats"))||[];
+let muted=false;
+let timer;
+
+/* SHOW */
+function show(){
+let c=catData[i];
+
+document.getElementById("catImage").src=c.img;
+document.getElementById("catFact").innerText=c.fact;
+
+let paw=document.getElementById("pawIcon");
+paw.classList.toggle("liked",liked.includes(c.id));
+}
+
+/* NEXT */
+function nextSlide(){
+i=(i+1)%catData.length;
+show();
+playSound();
+reset();
+}
+
+/* PREV */
+function prevSlide(){
+i=(i-1+catData.length)%catData.length;
+show();
+}
+
+/* LIKE */
+function toggleLike(){
+let id=catData[i].id;
+
+if(liked.includes(id)){
+liked=liked.filter(x=>x!==id);
+}else{
+liked.push(id);
+}
+
+localStorage.setItem("likedCats",JSON.stringify(liked));
+show();
+}
+
+/* SOUND */
+function playSound(){
+if(muted) return;
+let s=document.getElementById("catSound");
+s.currentTime=0;
+s.play().catch(()=>{});
+}
+
+/* MUTE */
+function toggleMute(){
+let btn=document.getElementById("muteBtn");
+let s=document.getElementById("catSound");
+
+muted=!muted;
+s.muted=muted;
+btn.innerText=muted?"🔇":"🔊";
+}
+
+/* AUTO RESET */
+function reset(){
+clearInterval(timer);
+timer=setInterval(nextSlide,5000);
+}
+
+show();
+timer=setInterval(nextSlide,5000);
+
+</script>
+
+</body>
+</html>
