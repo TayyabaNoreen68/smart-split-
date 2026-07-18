@@ -1,0 +1,275 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Solve the Questions</title>
+
+<style>
+body{
+background:#F5F5F5;
+font-family:sans-serif;
+margin:0;
+}
+
+.title{
+text-align:center;
+font-family:cursive;
+}
+
+.filters{
+display:flex;
+gap:15px;
+justify-content:center;
+padding:20px;
+flex-wrap:wrap;
+}
+
+.main{
+display:flex;
+gap:20px;
+padding:0 40px;
+}
+
+.quiz-box{
+flex:3;
+background:white;
+padding:20px;
+border-radius:8px;
+}
+
+.scores-box{
+flex:1;
+background:white;
+padding:20px;
+border-radius:8px;
+}
+
+.timer{
+text-align:center;
+color:#E74C3C;
+}
+
+.question{
+margin-bottom:20px;
+}
+
+.question p{
+font-weight:bold;
+}
+
+.question label{
+display:block;
+margin:5px 0;
+cursor:pointer;
+}
+</style>
+</head>
+
+<body>
+
+<h1 class="title">Solve the questions</h1>
+
+<div class="filters">
+
+<label>Category:
+<select id="category"></select>
+</label>
+
+<label>Difficulty:
+<select id="difficulty">
+<option value="easy">Easy</option>
+<option value="medium">Medium</option>
+<option value="hard">Hard</option>
+</select>
+</label>
+
+<label>Type:
+<select id="type">
+<option value="multiple">Multiple Choice</option>
+<option value="boolean">True / False</option>
+</select>
+</label>
+
+<button id="generateBtn">Generate Quiz</button>
+</div>
+
+<div class="main">
+
+<div class="quiz-box">
+<h3 class="timer" id="timer">Time Left: 60s</h3>
+<div id="questionsContainer"></div>
+<button id="submitBtn" style="display:none">Submit</button>
+</div>
+
+<div class="scores-box">
+<h3>Saved Scores</h3>
+<div id="scoresList"></div>
+</div>
+
+</div>
+
+<script>
+let currentQuestions = [];
+let userAnswers = {};
+let timer;
+let timeLeft = 60;
+
+const categoryMap = {
+"General Knowledge": 9,
+"Books": 10,
+"Film": 11,
+"Music": 12,
+"Science": 17,
+"Sports": 21,
+"History": 23,
+"Maths": 19
+};
+
+function loadCategories(){
+let catSelect = document.getElementById("category");
+
+for(let key in categoryMap){
+catSelect.innerHTML += `<option value="${key}">${key}</option>`;
+}
+}
+
+document.getElementById('generateBtn').onclick = async () => {
+
+let cat = document.getElementById('category').value;
+let diff = document.getElementById('difficulty').value;
+let type = document.getElementById('type').value;
+
+let url = `https://opentdb.com/api.php?amount=10&category=${categoryMap[cat]}&difficulty=${diff}&type=${type}`;
+
+let res = await fetch(url);
+let data = await res.json();
+
+currentQuestions = data.results;
+userAnswers = {};
+
+renderQuestions();
+startTimer();
+
+document.getElementById('submitBtn').style.display = 'block';
+};
+
+function renderQuestions(){
+
+let container = document.getElementById('questionsContainer');
+container.innerHTML = '';
+
+currentQuestions.forEach((q,i)=>{
+
+let options = [];
+
+if(q.type === "boolean"){
+options = ["True","False"];
+}else{
+options = [...q.incorrect_answers,q.correct_answer];
+options.sort(()=>Math.random()-0.5);
+}
+
+let html = options.map(opt=>`
+<label>
+<input type="radio" name="q${i}" value="${opt}" onchange="saveAnswer(${i},'${opt}')">
+${opt}
+</label>
+`).join('');
+
+container.innerHTML += `
+<div class="question">
+<p>Q${i+1}: ${q.question}</p>
+${html}
+</div>
+`;
+});
+}
+
+function saveAnswer(i,ans){
+userAnswers[i]=ans;
+}
+
+function startTimer(){
+clearInterval(timer);
+timeLeft=60;
+
+document.getElementById('timer').innerText=`Time Left: ${timeLeft}s`;
+
+timer=setInterval(()=>{
+timeLeft--;
+document.getElementById('timer').innerText=`Time Left: ${timeLeft}s`;
+
+if(timeLeft<=0){
+submitQuiz();
+}
+},1000);
+}
+
+document.getElementById('submitBtn').onclick=submitQuiz;
+
+function submitQuiz(){
+clearInterval(timer);
+
+let correct=0;
+
+currentQuestions.forEach((q,i)=>{
+if(userAnswers[i]===q.correct_answer){
+correct++;
+}
+});
+
+let percent=(correct/currentQuestions.length)*100;
+
+alert(`Your Score: ${correct}/${currentQuestions.length} - ${percent}%`);
+
+saveScore(correct,currentQuestions.length,percent);
+}
+
+function saveScore(c,t,p){
+
+let scores=JSON.parse(localStorage.getItem("quizScores"))||[];
+
+scores.unshift({
+score:`${c}/${t}`,
+percentage:p,
+category:document.getElementById("category").value,
+date:new Date().toLocaleDateString(),
+time:new Date().toLocaleTimeString()
+});
+
+localStorage.setItem("quizScores",JSON.stringify(scores));
+
+renderScores();
+}
+
+function renderScores(){
+
+let scores=JSON.parse(localStorage.getItem("quizScores"))||[];
+let list=document.getElementById("scoresList");
+
+if(scores.length===0){
+list.innerHTML="No scores saved yet.";
+return;
+}
+
+list.innerHTML=scores.map((s,i)=>`
+<p>
+${s.score} - ${s.percentage}% - ${s.category}
+<button onclick="deleteScore(${i})">x</button>
+</p>
+`).join('');
+}
+
+function deleteScore(i){
+let scores=JSON.parse(localStorage.getItem("quizScores"));
+scores.splice(i,1);
+localStorage.setItem("quizScores",JSON.stringify(scores));
+renderScores();
+}
+
+loadCategories();
+renderScores();
+</script>
+
+</body>
+</html>
