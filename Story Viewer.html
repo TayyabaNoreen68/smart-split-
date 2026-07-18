@@ -1,0 +1,226 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Pro Story Viewer</title>
+
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600&display=swap" rel="stylesheet">
+
+<style>
+
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: 'Poppins', sans-serif;
+    background: linear-gradient(135deg, #0f0c29, #302b63, #24243e);
+    height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+}
+
+.container {
+    width: 90%;
+    max-width: 700px;
+}
+
+.card {
+    background: rgba(255, 255, 255, 0.1);
+    backdrop-filter: blur(15px);
+    border-radius: 20px;
+    padding: 30px;
+    border: 2px solid rgba(0,255,150,0.5);
+    box-shadow: 0 0 25px rgba(0,255,150,0.2);
+    text-align: center;
+}
+
+h1 {
+    margin-bottom: 20px;
+    font-weight: 600;
+}
+
+.story-box {
+    background: linear-gradient(45deg, #ffb347, #ffcc33);
+    color: black;
+    padding: 25px;
+    border-radius: 15px;
+    min-height: 150px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 18px;
+    transition: all 0.4s ease;
+}
+
+.fade {
+    opacity: 0;
+    transform: translateY(10px);
+}
+
+.show {
+    opacity: 1;
+    transform: translateY(0);
+}
+
+.buttons {
+    margin-top: 20px;
+}
+
+button {
+    padding: 12px 18px;
+    margin: 5px;
+    border: none;
+    border-radius: 10px;
+    cursor: pointer;
+    font-weight: 500;
+    transition: 0.3s;
+}
+
+.prev { background: #8bc34a; }
+.next { background: #00bcd4; }
+.reset { background: white; color: black; }
+
+button:hover {
+    transform: scale(1.05);
+    box-shadow: 0 0 10px rgba(255,255,255,0.5);
+}
+
+.page-info {
+    margin-top: 10px;
+}
+
+.progress-container {
+    width: 100%;
+    height: 12px;
+    background: #333;
+    border-radius: 10px;
+    margin-top: 15px;
+}
+
+.progress-bar {
+    height: 100%;
+    width: 0%;
+    background: linear-gradient(90deg, #00ffcc, #00ff99);
+    border-radius: 10px;
+    transition: width 0.4s ease;
+}
+
+.footer {
+    margin-top: 15px;
+    font-size: 12px;
+    opacity: 0.7;
+}
+
+</style>
+</head>
+
+<body>
+
+<div class="container">
+<div class="card">
+
+<h1>📖 Story Viewer Pro</h1>
+
+<div id="storyBox" class="story-box show">Loading...</div>
+
+<div id="pageInfo" class="page-info"></div>
+
+<div class="progress-container">
+    <div id="progressBar" class="progress-bar"></div>
+</div>
+
+<div class="buttons">
+    <button class="prev" onclick="prevPage()">⬅️ Previous</button>
+    <button class="next" onclick="nextPage()">Next ➡️</button>
+    <button class="reset" onclick="resetStory()">🔄 Reset</button>
+</div>
+
+<div class="footer">
+    Premium UI Demo • Smooth Animations
+</div>
+
+</div>
+</div>
+
+<script>
+
+const pages = [
+"Success does not come overnight. It is built with patience and consistency.",
+"Every small step you take today shapes your future tomorrow.",
+"Failure is not the end, it is a lesson guiding you forward.",
+"Discipline is the bridge between goals and achievement.",
+"Your mindset decides how far you will go in life.",
+"Dream big, start small, but never stop moving forward.",
+"Consistency beats motivation when motivation fades.",
+"Growth happens when you step outside your comfort zone."
+];
+
+let index = 0;
+
+function showPage() {
+
+    let box = document.getElementById("storyBox");
+
+    box.classList.remove("show");
+    box.classList.add("fade");
+
+    setTimeout(() => {
+        box.innerText = pages[index];
+        box.classList.remove("fade");
+        box.classList.add("show");
+    }, 200);
+
+    document.getElementById("pageInfo").innerText =
+        "Page " + (index + 1) + " / " + pages.length;
+
+    updateProgress();
+}
+
+function nextPage() {
+    if (index < pages.length - 1) {
+        index++;
+        showPage();
+    }
+}
+
+function prevPage() {
+    if (index > 0) {
+        index--;
+        showPage();
+    }
+}
+
+function resetStory() {
+    index = 0;
+    showPage();
+}
+
+function updateProgress() {
+    let percent = ((index + 1) / pages.length) * 100;
+    document.getElementById("progressBar").style.width = percent + "%";
+}
+
+document.addEventListener("keydown", function(e){
+
+    if(e.key === "ArrowRight"){
+        nextPage();
+    }
+
+    if(e.key === "ArrowLeft"){
+        prevPage();
+    }
+
+});
+
+showPage();
+
+</script>
+
+</body>
+</html>

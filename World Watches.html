@@ -1,0 +1,273 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>World Watches</title>
+
+<style>
+body {
+  margin: 0;
+  font-family: sans-serif;
+  background: #fff;
+}
+
+/* Controls */
+.controls {
+  position: absolute;
+  top: 20px;
+  right: 20px;
+  display: flex;
+  gap: 10px;
+}
+
+/* Grid */
+.clocks-grid {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 30px;
+  padding: 80px 40px;
+}
+
+/* Clock */
+.clock-wrapper {
+  text-align: center;
+}
+
+.clock {
+  width: 150px;
+  height: 150px;
+  border: 3px solid #333;
+  border-radius: 50%;
+  position: relative;
+  margin: auto;
+  background: white;
+}
+
+/* Hands */
+.hand {
+  position: absolute;
+  bottom: 50%;
+  left: 50%;
+  transform-origin: bottom;
+  transform: rotate(0deg);
+}
+
+.hour-hand {
+  width: 4px;
+  height: 40px;
+  margin-left: -2px;
+  background: #333;
+}
+
+.minute-hand {
+  width: 3px;
+  height: 55px;
+  margin-left: -1.5px;
+  background: #333;
+}
+
+.second-hand {
+  width: 1px;
+  height: 60px;
+  margin-left: -0.5px;
+  background: red;
+}
+
+.center-dot {
+  width: 10px;
+  height: 10px;
+  background: #333;
+  border-radius: 50%;
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+}
+
+.label {
+  margin-top: 10px;
+}
+
+/* Digital Mode */
+.digital-card {
+  border: 1px solid #eee;
+  padding: 15px;
+  border-radius: 8px;
+}
+
+.digital-card h3 {
+  margin: 0;
+}
+
+.digital-card .time {
+  font-size: 1.5rem;
+  font-weight: bold;
+}
+
+.digital-card .date {
+  color: #666;
+  font-size: 0.9rem;
+}
+
+/* Styles */
+.clocks-grid.modern .clock {
+  border: 4px solid #0D6EFD;
+}
+
+.clocks-grid.classic .clock {
+  border: 8px double #333;
+  background: #F5F5DC;
+}
+
+.clocks-grid.minimal .clock {
+  border: 1px solid #ddd;
+}
+
+</style>
+</head>
+<body>
+<h1 style="text-align:center; margin-top:20px;">World Watches</h1>
+<div class="controls">
+  <button id="switchBtn">Switch to Digital</button>
+
+  <select id="styleSelect">
+    <option value="modern">Modern</option>
+    <option value="classic">Classic</option>
+    <option value="minimal">Minimal</option>
+  </select>
+</div>
+
+<div class="clocks-grid modern" id="clocksGrid"></div>
+
+<script>
+const clocks = [
+  { name: 'China', timezone: 'Asia/Shanghai' },
+  { name: 'Romania', timezone: 'Europe/Bucharest' },
+  { name: 'Bangladesh', timezone: 'Asia/Dhaka' },
+  { name: 'New York', timezone: 'America/New_York' },
+  { name: 'Martinique', timezone: 'America/Martinique' },
+  { name: 'Serbia', timezone: 'Europe/Belgrade' },
+  { name: 'Senegal', timezone: 'Africa/Dakar' },
+  { name: 'Morocco', timezone: 'Africa/Casablanca' },
+  { name: 'Sri Lanka', timezone: 'Asia/Colombo' },
+  { name: 'Pakistan', timezone: 'Asia/Karachi' },
+  { name: 'Istanbul', timezone: 'Europe/Istanbul' },
+  { name: 'Paris', timezone: 'Europe/Paris' },
+  { name: 'Egypt', timezone: 'Africa/Cairo' },
+  { name: 'Mali', timezone: 'Africa/Bamako' },
+  { name: 'Algeria', timezone: 'Africa/Algiers' }
+];
+
+let isAnalog = true;
+
+/* CREATE CLOCKS */
+const grid = document.getElementById("clocksGrid");
+
+clocks.forEach((c, i) => {
+  grid.innerHTML += `
+    <div class="clock-wrapper" id="clock-${i}">
+      <div class="clock">
+        <div class="hand hour-hand"></div>
+        <div class="hand minute-hand"></div>
+        <div class="hand second-hand"></div>
+        <div class="center-dot"></div>
+      </div>
+      <p class="label">${c.name}</p>
+    </div>
+  `;
+});
+
+/* GET TIME IN TIMEZONE */
+function getTime(timezone) {
+  let date = new Date();
+  let options = {
+    timeZone: timezone,
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit',
+    hour12: false
+  };
+
+  let parts = new Intl.DateTimeFormat('en-US', options)
+    .format(date)
+    .split(':');
+
+  return {
+    hours: parseInt(parts[0]),
+    minutes: parseInt(parts[1]),
+    seconds: parseInt(parts[2])
+  };
+}
+
+/* ANALOG CLOCK UPDATE */
+function updateClock(el, timezone) {
+  let { hours, minutes, seconds } = getTime(timezone);
+
+  let secDeg = seconds * 6;
+  let minDeg = minutes * 6 + seconds * 0.1;
+  let hourDeg = (hours % 12) * 30 + minutes * 0.5;
+
+  el.querySelector(".second-hand").style.transform = `rotate(${secDeg}deg)`;
+  el.querySelector(".minute-hand").style.transform = `rotate(${minDeg}deg)`;
+  el.querySelector(".hour-hand").style.transform = `rotate(${hourDeg}deg)`;
+}
+
+/* DIGITAL CLOCK */
+function updateDigital(el, timezone, name) {
+  let time = new Intl.DateTimeFormat('en-US', {
+    timeZone: timezone,
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit'
+  }).format(new Date());
+
+  let date = new Intl.DateTimeFormat('en-US', {
+    timeZone: timezone,
+    weekday: 'long',
+    day: '2-digit',
+    month: 'short',
+    year: 'numeric'
+  }).format(new Date());
+
+  el.innerHTML = `
+    <div class="digital-card">
+      <h3>${name}</h3>
+      <div class="time">${time}</div>
+      <div class="date">${date}</div>
+    </div>
+  `;
+}
+
+/* UPDATE ALL CLOCKS */
+function updateAll() {
+  clocks.forEach((c, i) => {
+    let el = document.getElementById(`clock-${i}`);
+
+    if (isAnalog) {
+      updateClock(el, c.timezone);
+    } else {
+      updateDigital(el, c.timezone, c.name);
+    }
+  });
+}
+
+/* INTERVAL */
+setInterval(updateAll, 1000);
+updateAll();
+
+/* SWITCH MODE */
+document.getElementById("switchBtn").onclick = () => {
+  isAnalog = !isAnalog;
+  document.getElementById("switchBtn").innerText =
+    isAnalog ? "Switch to Digital" : "Switch to Analog";
+  updateAll();
+};
+
+/* STYLE CHANGE */
+document.getElementById("styleSelect").onchange = (e) => {
+  grid.className = `clocks-grid ${e.target.value}`;
+};
+</script>
+
+</body>
+</html>
