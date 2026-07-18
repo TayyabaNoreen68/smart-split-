@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Flights Tracker</title>
+
+<link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css"/>
+
+<style>
+body{
+  margin:0;
+  font-family:Arial;
+  background:#0f172a;
+  color:white;
+}
+
+header{
+  text-align:center;
+  padding:15px;
+  font-size:26px;
+}
+
+.top{
+  display:flex;
+  justify-content:center;
+  gap:10px;
+  padding:10px;
+}
+
+select,button{
+  padding:10px;
+  border:none;
+  border-radius:5px;
+}
+
+button{
+  background:#38bdf8;
+  color:white;
+  cursor:pointer;
+}
+
+#map{
+  height:500px;
+  width:70%;
+  float:left;
+}
+
+#panel{
+  width:30%;
+  height:500px;
+  float:right;
+  background:white;
+  color:black;
+  padding:15px;
+  overflow:auto;
+}
+
+.flight{
+  margin-bottom:10px;
+}
+</style>
+</head>
+
+<body>
+
+<header>Flights Tracker</header>
+
+<div class="top">
+  <select id="countryFilter">
+    <option value="All">All Countries</option>
+  </select>
+  <button id="refreshBtn">Refresh Flights</button>
+</div>
+
+<div id="map"></div>
+
+
+<script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+
+<script>
+
+const map = L.map('map').setView([30, 0], 3);
+L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png',{
+  attribution:'© OpenStreetMap © CARTO'
+}).addTo(map);
+
+let markers = [];
+let allFlights = [];
+async function loadFlights(){
+
+  try{
+
+    const url = "https://opensky-network.org/api/states/all?lamin=35.0&lomin=-10.0&lamax=60.0&lomax=30.0";
+
+    const response = await fetch(url);
+
+    const data = await response.json();
+
+    allFlights = data.states || [];
+
+    updateCountries();
+    renderFlights();
+
+  }
+  catch(error){
+
+    console.error("Error fetching flights:", error);
+
+    alert("Error fetching flight data.");
+
+  }
+}
+function updateCountries(){
+  let select = document.getElementById("countryFilter");
+
+  let countries = new Set(allFlights.map(f => f[2]).filter(Boolean));
+
+  select.innerHTML = `<option value="All">All Countries</option>` +
+    [...countries].map(c => `<option value="${c}">${c}</option>`).join("");
+}
+
+function clearMarkers(){
+  markers.forEach(m => map.removeLayer(m));
+  markers = [];
+}
+
+function renderFlights(){
+
+  clearMarkers();
+
+  let filter = document.getElementById("countryFilter").value;
+
+  allFlights.forEach(f => {
+
+    let country = f[2];
+    let lat = f[6];
+    let lng = f[5];
+
+    if(!lat || !lng) return;
+    if(filter !== "All" && country !== filter) return;
+
+    let marker = L.marker([lat,lng]).addTo(map);
+
+    marker.on("click",()=>{
+      showDetails(f);
+    });
+
+    markers.push(marker);
+  });
+}
+
+function showDetails(f){
+
+  document.getElementById("panel").innerHTML = `
+    <h3>Flight Details</h3>
+    <p><b>Flight:</b> ${f[1] || "N/A"}</p>
+    <p><b>Country:</b> ${f[2]}</p>
+    <p><b>Speed:</b> ${Math.round(f[9] || 0)} km/h</p>
+    <p><b>Altitude:</b> ${Math.round(f[7] || 0)} m</p>
+    <p><b>Direction:</b> ${Math.round(f[10] || 0)}°</p>
+    <p><b>Lat:</b> ${f[6]}</p>
+    <p><b>Lng:</b> ${f[5]}</p>
+  `;
+}
+document.getElementById("refreshBtn").addEventListener("click", loadFlights);
+
+document.getElementById("countryFilter").onchange = renderFlights;
+
+setInterval(loadFlights,15000);
+
+loadFlights();
+
+</script>
+
+</body>
+</html>

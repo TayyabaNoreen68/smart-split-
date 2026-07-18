@@ -1,0 +1,618 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Fruit Ninja Style Game</title>
+<style>
+  /* ---------- Basic page styling ---------- */
+  body{
+    margin:0;
+    min-height:100vh;
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    justify-content:center;
+    background:linear-gradient(#1b1035,#3a1a5c);
+    font-family:Arial, Helvetica, sans-serif;
+    color:#fff;
+  }
+  h1{
+    margin:10px 0;
+    letter-spacing:2px;
+    text-shadow:0 0 10px #ff5e62;
+  }
+  /* Wrapper jisme canvas aur overlay dono rahenge (position:relative isliye taaki overlay canvas ke upar exactly aa jaye) */
+  #gameWrapper{
+    position:relative;
+    width:800px;
+    height:400px;
+  }
+  /* ---------- Canvas styling ---------- */
+  canvas{
+    background:#0f0f2d;
+    border:4px solid #ff5e62;
+    border-radius:8px;
+    display:block;
+    /* SVG knife cursor - normal mouse pointer ki jagah knife dikhana */
+    cursor: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 40 40"><g transform="rotate(45 20 20)"><rect x="18" y="4" width="4" height="20" fill="%23d9d9d9" stroke="%23555" stroke-width="1"/><polygon points="16,2 24,2 20,-6" fill="%23d9d9d9"/><rect x="16" y="24" width="8" height="10" rx="2" fill="%238b5a2b"/></g></svg>') 20 20, crosshair;
+  }
+  /* ---------- Game Over overlay ---------- */
+  #gameOverScreen{
+    position:absolute;
+    top:0; left:0;
+    width:100%; height:100%;
+    background:rgba(0,0,0,0.75);
+    display:none; /* JS isko flex kar dega jab game over hoga */
+    flex-direction:column;
+    align-items:center;
+    justify-content:center;
+    border-radius:8px;
+    text-align:center;
+  }
+  #gameOverScreen h2{
+    font-size:32px;
+    color:#ff4d4d;
+    margin-bottom:5px;
+  }
+  #gameOverScreen p{
+    font-size:20px;
+    margin:5px 0 20px 0;
+  }
+  #playAgainBtn{
+    padding:10px 25px;
+    font-size:18px;
+    background:#ff5e62;
+    border:none;
+    border-radius:6px;
+    color:#fff;
+    cursor:pointer;
+  }
+  #playAgainBtn:hover{ background:#ff8b8f; }
+</style>
+</head>
+<body>
+
+<h1>🍉 Fruit Ninja Style Game 🍉</h1>
+
+<!-- Wrapper div jisme canvas + game-over overlay rakhe hain -->
+<div id="gameWrapper">
+  <!-- Requirement 2: Canvas based game, size 800x400 -->
+  <canvas id="gameCanvas" width="800" height="400"></canvas>
+
+  <!-- Requirement 16: Game Over screen with final score and Play Again button -->
+  <div id="gameOverScreen">
+    <h2 id="gameOverReason">Game Over!</h2>
+    <p id="finalScoreText">Score: 0</p>
+    <button id="playAgainBtn">Play Again</button>
+  </div>
+</div>
+
+<script>
+/* =========================================================
+   FRUIT NINJA STYLE GAME - FULL JAVASCRIPT LOGIC
+   Sab comments Hinglish mein hain taaki viva mein explain
+   karna easy ho jaye.
+   ========================================================= */
+
+// ---------- Canvas setup ----------
+const canvas = document.getElementById('gameCanvas');
+const ctx = canvas.getContext('2d');
+const W = canvas.width;   // 800
+const H = canvas.height;  // 400
+
+// ---------- Game over overlay elements ----------
+const gameOverScreen = document.getElementById('gameOverScreen');
+const gameOverReason = document.getElementById('gameOverReason');
+const finalScoreText = document.getElementById('finalScoreText');
+const playAgainBtn = document.getElementById('playAgainBtn');
+
+// ---------- Game state variables ----------
+let score = 0;                 // Requirement 4: Score system
+let gameRunning = true;        // Game abhi chal raha hai ya nahi
+let startTime = performance.now(); // Game start hone ka time
+const GAME_DURATION = 120;     // Requirement 3: 2 minute (120 second) timer
+
+let fruits = [];   // Screen par abhi jitne fruits/bombs maujood hain
+let popups = [];   // Score popup texts (+2 / +5) jo upar fade hote hain
+
+let lastSpawnSecond = -1;      // Track karta hai ki last time kis second spawn hua tha
+let spawnCountPerWave = 1;     // Ek wave mein kitne fruits spawn honge (difficulty ke sath badhega)
+
+// Mouse ki last position store karte hain taaki hum "movement line"
+// bana sakein aur us line ka fruit ke circle ke sath intersection check kar sakein
+let mouse = { x: -100, y: -100, prevX: -100, prevY: -100 };
+
+// ---------- Fruit types definition ----------
+// Har fruit type ka naam, color aur base radius yahan define kiya hai
+// Requirement 11: 7 different fruits
+const FRUIT_TYPES = [
+  { name: 'apple',       color: '#e74c3c', radius: 28, points: 2 },
+  { name: 'banana',      color: '#f4d03f', radius: 30, points: 2 },
+  { name: 'watermelon',  color: '#27ae60', radius: 36, points: 5 }, // bade points
+  { name: 'pineapple',   color: '#e6b800', radius: 30, points: 2 },
+  { name: 'kiwi',        color: '#8b5a2b', radius: 24, points: 2 },
+  { name: 'pomegranate', color: '#c0392b', radius: 26, points: 5 }, // bade points
+  { name: 'strawberry',  color: '#ff3860', radius: 22, points: 2 }
+];
+
+/* =========================================================
+   FRUIT CLASS
+   Har fruit object apni khud ki position, motion aur rotation
+   handle karta hai.
+   ========================================================= */
+class Fruit {
+  constructor() {
+    // Random fruit type choose karo
+    const type = FRUIT_TYPES[Math.floor(Math.random() * FRUIT_TYPES.length)];
+    this.type = type.name;
+    this.color = type.color;
+    this.radius = type.radius;
+    this.points = type.points;
+
+    // Requirement 7: random position
+    this.startX = 60 + Math.random() * (W - 120);   // canvas ke andar random x
+    this.xDrift = (Math.random() - 0.5) * 60;        // thoda left-right drift (px/sec)
+
+    // Requirement 6: Sine wave motion ke parameters
+    this.startY = H + 20;                     // fruit neeche se start hota hai (canvas ke bahar)
+    this.amplitude = 220 + Math.random() * 90; // kitna upar uchhalega
+    this.duration = 2200 + Math.random() * 1200; // pura upar-neeche arc kitni der mein complete hoga (ms)
+
+    this.spawnTime = performance.now();
+
+    // Requirement 10: rotation with random speed
+    this.rotation = Math.random() * Math.PI * 2;
+    this.rotationSpeed = (Math.random() - 0.5) * 0.12; // radians per frame
+
+    this.sliced = false;      // Kya fruit slice ho chuka hai
+    this.sliceTime = 0;       // Kab slice hua tha (halves animation ke liye)
+    this.remove = false;      // true hone par ye fruit array se hata diya jayega
+
+    // Current position (update() function isko update karega)
+    this.x = this.startX;
+    this.y = this.startY;
+  }
+
+  // Har frame par fruit ki position update karta hai (sine wave motion)
+  update(now) {
+    const t = now - this.spawnTime;         // Ab tak kitna time beeta
+    const progress = t / this.duration;     // 0 se 1 tak
+
+    if (progress >= 1) {
+      // Fruit apna arc complete kar ke neeche gir chuka -> remove
+      this.remove = true;
+      return;
+    }
+
+    // Sine wave formula: progress 0 -> 1 tak Math.sin(PI*progress) 0 -> 1 -> 0 jata hai
+    // Isse fruit smoothly upar uthta hai aur phir neeche wapas aata hai (natural arc jaisa)
+    this.y = this.startY - this.amplitude * Math.sin(Math.PI * progress);
+    this.x = this.startX + this.xDrift * (t / 1000);
+
+    // Rotation update
+    this.rotation += this.rotationSpeed;
+
+    // Agar slice ho chuka hai to halves ko thodi der baad remove kar do
+    if (this.sliced && now - this.sliceTime > 500) {
+      this.remove = true;
+    }
+  }
+
+  // Fruit ko canvas par draw karta hai
+  draw(ctx) {
+    if (this.sliced) {
+      this.drawSlicedHalves(ctx);
+      return;
+    }
+    ctx.save();
+    ctx.translate(this.x, this.y);
+    ctx.rotate(this.rotation);
+    this.drawShape(ctx, this.type, this.color, this.radius);
+    ctx.restore();
+  }
+
+  // Requirement 9: fruit cut hone par do halves dikhana (fade + move apart)
+  drawSlicedHalves(ctx) {
+    const elapsed = performance.now() - this.sliceTime;
+    const progressFade = Math.min(elapsed / 500, 1);
+    const alpha = 1 - progressFade;          // dheere dheere fade out
+    const offset = progressFade * 25;        // halves door hote jate hain
+
+    ctx.save();
+    ctx.globalAlpha = alpha;
+
+    // Left half
+    ctx.save();
+    ctx.translate(this.x - offset, this.y + offset * 0.4);
+    ctx.rotate(this.rotation - 0.3);
+    ctx.beginPath();
+    ctx.arc(0, 0, this.radius, Math.PI / 2, Math.PI * 1.5);
+    ctx.fillStyle = this.color;
+    ctx.fill();
+    ctx.restore();
+
+    // Right half
+    ctx.save();
+    ctx.translate(this.x + offset, this.y + offset * 0.4);
+    ctx.rotate(this.rotation + 0.3);
+    ctx.beginPath();
+    ctx.arc(0, 0, this.radius, -Math.PI / 2, Math.PI / 2);
+    ctx.fillStyle = this.color;
+    ctx.fill();
+    ctx.restore();
+
+    ctx.restore();
+  }
+
+  // Requirement 12: Custom fruit shapes canvas se draw kiye (koi image nahi)
+  drawShape(ctx, type, color, r) {
+    ctx.beginPath();
+    switch (type) {
+      case 'apple':
+        ctx.arc(0, 0, r, 0, Math.PI * 2);
+        ctx.fillStyle = color;
+        ctx.fill();
+        // stem
+        ctx.strokeStyle = '#5a3b1c';
+        ctx.lineWidth = 3;
+        ctx.beginPath();
+        ctx.moveTo(0, -r);
+        ctx.lineTo(4, -r - 10);
+        ctx.stroke();
+        // leaf
+        ctx.fillStyle = '#2ecc71';
+        ctx.beginPath();
+        ctx.ellipse(10, -r - 8, 8, 4, 0.6, 0, Math.PI * 2);
+        ctx.fill();
+        break;
+
+      case 'banana':
+        ctx.strokeStyle = color;
+        ctx.lineWidth = 14;
+        ctx.lineCap = 'round';
+        ctx.beginPath();
+        ctx.arc(0, 0, r, Math.PI * 0.9, Math.PI * 1.9);
+        ctx.stroke();
+        break;
+
+      case 'watermelon':
+        ctx.arc(0, 0, r, 0, Math.PI * 2);
+        ctx.fillStyle = color;
+        ctx.fill();
+        // dark green stripes
+        ctx.strokeStyle = '#145a32';
+        ctx.lineWidth = 4;
+        for (let a = 0; a < Math.PI * 2; a += Math.PI / 3) {
+          ctx.beginPath();
+          ctx.moveTo(0, 0);
+          ctx.arc(0, 0, r, a, a + 0.3);
+          ctx.stroke();
+        }
+        break;
+
+      case 'pineapple':
+        ctx.fillStyle = color;
+        ctx.beginPath();
+        ctx.ellipse(0, 0, r * 0.7, r, 0, 0, Math.PI * 2);
+        ctx.fill();
+        // spiky leaves on top
+        ctx.fillStyle = '#1e8449';
+        for (let i = -2; i <= 2; i++) {
+          ctx.beginPath();
+          ctx.moveTo(i * 5, -r);
+          ctx.lineTo(i * 5 - 4, -r - 18);
+          ctx.lineTo(i * 5 + 4, -r - 18);
+          ctx.closePath();
+          ctx.fill();
+        }
+        break;
+
+      case 'kiwi':
+        ctx.arc(0, 0, r, 0, Math.PI * 2);
+        ctx.fillStyle = color;
+        ctx.fill();
+        // fuzzy dots
+        ctx.fillStyle = '#d2b48c';
+        for (let i = 0; i < 10; i++) {
+          const ang = Math.random() * Math.PI * 2;
+          const rr = Math.random() * r;
+          ctx.beginPath();
+          ctx.arc(Math.cos(ang) * rr, Math.sin(ang) * rr, 1.5, 0, Math.PI * 2);
+          ctx.fill();
+        }
+        break;
+
+      case 'pomegranate':
+        ctx.arc(0, 0, r, 0, Math.PI * 2);
+        ctx.fillStyle = color;
+        ctx.fill();
+        // crown on top
+        ctx.fillStyle = '#7b241c';
+        ctx.beginPath();
+        ctx.moveTo(-6, -r);
+        ctx.lineTo(0, -r - 10);
+        ctx.lineTo(6, -r);
+        ctx.closePath();
+        ctx.fill();
+        break;
+
+      case 'strawberry':
+        ctx.fillStyle = color;
+        ctx.beginPath();
+        ctx.moveTo(0, -r);
+        ctx.bezierCurveTo(r, -r, r, r * 0.6, 0, r);
+        ctx.bezierCurveTo(-r, r * 0.6, -r, -r, 0, -r);
+        ctx.fill();
+        // seeds
+        ctx.fillStyle = '#f9e79f';
+        for (let i = 0; i < 6; i++) {
+          ctx.beginPath();
+          ctx.arc((Math.random() - 0.5) * r, (Math.random() - 0.2) * r, 1.3, 0, Math.PI * 2);
+          ctx.fill();
+        }
+        // green top
+        ctx.fillStyle = '#27ae60';
+        ctx.beginPath();
+        ctx.moveTo(-8, -r);
+        ctx.lineTo(8, -r);
+        ctx.lineTo(0, -r - 8);
+        ctx.closePath();
+        ctx.fill();
+        break;
+    }
+  }
+}
+
+/* =========================================================
+   BOMB CLASS
+   Fruit class jaisi hi motion use karta hai (inherit-like)
+   par shape aur behaviour alag hai (slice hote hi game over)
+   ========================================================= */
+class Bomb extends Fruit {
+  constructor() {
+    super();
+    this.type = 'bomb';
+    this.radius = 26;
+    this.color = '#111';
+  }
+
+  // Bomb ka apna shape - Requirement 13
+  drawShape(ctx) {
+    // black circle body
+    ctx.beginPath();
+    ctx.arc(0, 0, this.radius, 0, Math.PI * 2);
+    ctx.fillStyle = '#111';
+    ctx.fill();
+
+    // white fuse
+    ctx.strokeStyle = '#fff';
+    ctx.lineWidth = 3;
+    ctx.beginPath();
+    ctx.moveTo(0, -this.radius);
+    ctx.quadraticCurveTo(10, -this.radius - 15, 4, -this.radius - 22);
+    ctx.stroke();
+
+    // yellow sparkle at fuse tip
+    ctx.fillStyle = '#f1c40f';
+    ctx.beginPath();
+    ctx.arc(4, -this.radius - 22, 4, 0, Math.PI * 2);
+    ctx.fill();
+
+    // neeche yellow sparkle effect
+    ctx.fillStyle = 'rgba(241,196,15,0.7)';
+    for (let i = 0; i < 4; i++) {
+      const ang = Math.random() * Math.PI * 2;
+      ctx.beginPath();
+      ctx.arc(Math.cos(ang) * (this.radius + 4), Math.sin(ang) * (this.radius + 4), 2, 0, Math.PI * 2);
+      ctx.fill();
+    }
+  }
+
+  // Bomb kabhi slice hoke halves nahi banata - overwrite kar diya taaki normal circle hi dikhe
+  drawSlicedHalves(ctx) {
+    ctx.save();
+    ctx.translate(this.x, this.y);
+    ctx.rotate(this.rotation);
+    this.drawShape(ctx);
+    ctx.restore();
+  }
+}
+
+/* =========================================================
+   POPUP CLASS
+   Requirement 18: +2 / +5 text upar move ho kar fade out hota hai
+   ========================================================= */
+class Popup {
+  constructor(x, y, text) {
+    this.x = x;
+    this.y = y;
+    this.text = text;
+    this.opacity = 1;
+    this.vy = -1.2; // upar ki taraf move karega
+  }
+  update() {
+    this.y += this.vy;
+    this.opacity -= 0.02;
+  }
+  draw(ctx) {
+    ctx.save();
+    ctx.globalAlpha = Math.max(this.opacity, 0);
+    ctx.fillStyle = '#fff700';
+    ctx.font = 'bold 22px Arial';
+    ctx.textAlign = 'center';
+    ctx.fillText(this.text, this.x, this.y);
+    ctx.restore();
+  }
+}
+
+/* =========================================================
+   SPAWNING LOGIC
+   Requirement 7 + 8: har second random spawn, har 20 sec
+   baad difficulty (spawn count) badhti hai
+   ========================================================= */
+function spawnWave() {
+  for (let i = 0; i < spawnCountPerWave; i++) {
+    // 15% chance bomb spawn hone ki, baaki fruit
+    if (Math.random() < 0.15) {
+      fruits.push(new Bomb());
+    } else {
+      fruits.push(new Fruit());
+    }
+  }
+}
+
+/* =========================================================
+   COLLISION DETECTION
+   Requirement 15: sirf click nahi, mouse movement line aur
+   fruit ke circle ka intersection check karte hain
+   ========================================================= */
+
+// Point aur line-segment ke beech minimum distance nikalne wala helper function
+function distToSegment(px, py, x1, y1, x2, y2) {
+  const dx = x2 - x1;
+  const dy = y2 - y1;
+  const lengthSq = dx * dx + dy * dy;
+
+  let t = lengthSq === 0 ? 0 : ((px - x1) * dx + (py - y1) * dy) / lengthSq;
+  t = Math.max(0, Math.min(1, t)); // t ko 0-1 ke beech clamp karo (segment ke andar)
+
+  const closestX = x1 + t * dx;
+  const closestY = y1 + t * dy;
+
+  const distX = px - closestX;
+  const distY = py - closestY;
+  return Math.sqrt(distX * distX + distY * distY);
+}
+
+function checkSlicing() {
+  // Agar mouse move hi nahi hua to kuch check karne ki zarurat nahi
+  if (mouse.prevX === mouse.x && mouse.prevY === mouse.y) return;
+
+  fruits.forEach(f => {
+    if (f.sliced || f.remove) return;
+
+    const d = distToSegment(f.x, f.y, mouse.prevX, mouse.prevY, mouse.x, mouse.y);
+
+    if (d < f.radius) {
+      // Fruit ya bomb slice ho gaya!
+      if (f.type === 'bomb') {
+        gameOver(true); // true = bomb hit hua
+      } else {
+        f.sliced = true;
+        f.sliceTime = performance.now();
+        score += f.points;
+        popups.push(new Popup(f.x, f.y, '+' + f.points));
+      }
+    }
+  });
+}
+
+/* =========================================================
+   GAME OVER HANDLING
+   Requirement 5 + 16
+   ========================================================= */
+function gameOver(hitBomb) {
+  if (!gameRunning) return; // dubara trigger na ho
+  gameRunning = false;
+
+  gameOverReason.textContent = hitBomb ? 'You hit a bomb!' : "Time's up!";
+  finalScoreText.textContent = 'Final Score: ' + score;
+  gameOverScreen.style.display = 'flex';
+}
+
+function resetGame() {
+  score = 0;
+  fruits = [];
+  popups = [];
+  spawnCountPerWave = 1;
+  lastSpawnSecond = -1;
+  startTime = performance.now();
+  gameRunning = true;
+  gameOverScreen.style.display = 'none';
+  requestAnimationFrame(gameLoop);
+}
+
+playAgainBtn.addEventListener('click', resetGame);
+
+/* =========================================================
+   MOUSE TRACKING
+   ========================================================= */
+canvas.addEventListener('mousemove', (e) => {
+  const rect = canvas.getBoundingClientRect();
+  mouse.prevX = mouse.x;
+  mouse.prevY = mouse.y;
+  mouse.x = e.clientX - rect.left;
+  mouse.y = e.clientY - rect.top;
+});
+
+/* =========================================================
+   DRAWING HELPERS (background, score, timer)
+   ========================================================= */
+function drawBackground() {
+  ctx.fillStyle = '#0f0f2d';
+  ctx.fillRect(0, 0, W, H);
+}
+
+function drawHUD(remainingTime) {
+  // Requirement 4: score top-left par live update
+  ctx.fillStyle = '#fff';
+  ctx.font = 'bold 22px Arial';
+  ctx.textAlign = 'left';
+  ctx.fillText('Score: ' + score, 15, 30);
+
+  // Timer top-right par
+  ctx.textAlign = 'right';
+  ctx.fillText('Time: ' + Math.ceil(remainingTime) + 's', W - 15, 30);
+}
+
+/* =========================================================
+   MAIN GAME LOOP - Requirement 17: requestAnimationFrame
+   ========================================================= */
+function gameLoop() {
+  if (!gameRunning) return; // game khatam ho chuka to loop rok do
+
+  const now = performance.now();
+  const elapsed = (now - startTime) / 1000; // seconds mein beeta hua time
+  const remaining = GAME_DURATION - elapsed;
+
+  // Requirement 3: 2 minute time khatam hote hi game end
+  if (remaining <= 0) {
+    gameOver(false);
+    return;
+  }
+
+  // ---- Spawning: har naye second par ek wave spawn karo ----
+  const currentSecond = Math.floor(elapsed);
+  if (currentSecond !== lastSpawnSecond) {
+    lastSpawnSecond = currentSecond;
+    spawnWave();
+  }
+
+  // Requirement 8: har 20 second baad difficulty (spawn count) badhao
+  const difficultyLevel = Math.floor(elapsed / 20);
+  spawnCountPerWave = 1 + difficultyLevel; // 1,2,3,4... jaise time badhega
+
+  // ---- Update phase ----
+  fruits.forEach(f => f.update(now));
+  fruits = fruits.filter(f => !f.remove); // jo fruits complete ho gaye unhe hata do
+
+  popups.forEach(p => p.update());
+  popups = popups.filter(p => p.opacity > 0);
+
+  checkSlicing();
+
+  // ---- Draw phase ----
+  drawBackground();
+  fruits.forEach(f => f.draw(ctx));
+  popups.forEach(p => p.draw(ctx));
+  drawHUD(remaining);
+
+  // Agli frame ke liye phir se call karo (smooth animation)
+  requestAnimationFrame(gameLoop);
+}
+
+// Game ko pehli baar start karo
+requestAnimationFrame(gameLoop);
+</script>
+</body>
+</html>

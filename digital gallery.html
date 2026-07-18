@@ -1,0 +1,784 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<title>Digital Gallery</title>
+
+<style>
+
+:root
+{
+--bg:#f4f6fb;
+--card:#ffffff;
+--accent:#6d5efc;
+--text:#1f2937;
+--muted:#6b7280;
+--line:#e5e7eb;
+}
+
+*
+{
+margin:0;
+padding:0;
+box-sizing:border-box;
+font-family:Arial;
+}
+
+body
+{
+background:var(--bg);
+padding:20px;
+}
+
+.header
+{
+display:flex;
+justify-content:space-between;
+align-items:center;
+margin-bottom:20px;
+}
+
+h1
+{
+color:var(--accent);
+}
+
+button
+{
+padding:10px 15px;
+background:var(--accent);
+color:white;
+border:none;
+border-radius:8px;
+cursor:pointer;
+}
+
+.container
+{
+display:grid;
+grid-template-columns:3fr 1fr;
+gap:20px;
+}
+
+.gallery
+{
+display:grid;
+grid-template-columns:repeat(auto-fill,minmax(200px,1fr));
+gap:20px;
+}
+
+
+.card
+{
+position:relative;
+overflow:hidden;
+}
+
+
+.card img
+{
+width:100%;
+height:150px;
+object-fit:cover;
+}
+
+.title
+{
+padding:10px;
+font-weight:bold;
+}
+
+.overlay
+{
+position:absolute;
+top:0;
+left:0;
+right:0;
+bottom:0;
+background:rgba(0,0,0,0.85);
+color:white;
+padding:12px;
+opacity:0;
+transition:0.3s;
+font-size:13px;
+}
+
+.card:hover .overlay
+{
+opacity:1;
+}
+.card:hover .share
+{
+opacity:1;
+}
+.share
+{
+position:absolute;
+top:10px;
+right:10px;
+width:36px;
+height:36px;
+display:flex;
+justify-content:center;
+align-items:center;
+background:white;
+color:black;
+border-radius:50%;
+cursor:pointer;
+font-size:18px;
+font-weight:bold;
+transition:.3s;
+z-index:10;
+opacity:0;
+}
+.share.saved
+{
+background:#22c55e;
+color:white;
+}
+
+.sidebar
+{
+background:white;
+padding:15px;
+border-radius:12px;
+}
+
+.sidebar h3
+{
+margin-bottom:10px;
+}
+
+.mini
+{
+display:flex;
+align-items:center;
+gap:15px;
+padding:12px;
+margin-bottom:15px;
+border-bottom:1px solid #ddd;
+cursor:pointer;
+}
+
+.mini img
+{
+width:70px;
+height:70px;
+object-fit:cover;
+border-radius:6px;
+}
+
+.mini span
+{
+font-size:20px;
+}
+
+.mini img
+{
+width:90px;
+height:90px;
+object-fit:cover;
+border-radius:8px;
+}
+
+.mini span
+{
+font-size:18px;
+color:#222;
+}
+.modal
+{
+position:fixed;
+top:0;
+left:0;
+width:100%;
+height:100%;
+background:rgba(0,0,0,0.5);
+display:none;
+justify-content:center;
+align-items:center;
+}
+.gallery-form
+{
+background:#fff;
+width:90%;
+max-width:800px;
+padding:25px;
+border-radius:10px;
+}
+
+.gallery-form h2
+{
+margin-bottom:20px;
+font-size:32px;
+}
+
+.gallery-form label
+{
+display:block;
+font-size:18px;
+font-weight:bold;
+margin-top:20px;
+margin-bottom:10px;
+}
+
+.gallery-form input
+{
+width:100%;
+padding:14px;
+border:1px solid #ccc;
+border-radius:6px;
+font-size:18px;
+}
+
+#savedImages
+{
+display:flex;
+flex-wrap:wrap;
+gap:20px;
+margin-top:15px;
+min-height:120px;
+}
+
+#savedImages img
+{
+width:120px;
+height:120px;
+object-fit:cover;
+cursor:pointer;
+border:3px solid transparent;
+border-radius:6px;
+}
+
+#savedImages img.selected
+
+
+{
+border-color:#2196f3;
+}
+.saved-card
+{
+position:relative;
+width:120px;
+height:120px;
+overflow:hidden;
+border-radius:6px;
+}
+
+.saved-card img
+{
+width:100%;
+height:100%;
+object-fit:cover;
+display:block;
+cursor:pointer;
+border:3px solid transparent;
+border-radius:6px;
+}
+
+.remove-image
+{
+position:absolute;
+top:5px;
+right:5px;
+width:22px;
+height:22px;
+background:red;
+color:white;
+border-radius:50%;
+display:flex;
+justify-content:center;
+align-items:center;
+font-size:14px;
+font-weight:bold;
+cursor:pointer;
+z-index:100;
+}
+.delete-gallery
+{
+margin-left:auto;
+background:#dc3545;
+color:#fff;
+border:none;
+padding:6px 12px;
+border-radius:6px;
+cursor:pointer;
+font-size:13px;
+}
+.buttons
+{
+display:flex;
+justify-content:flex-end;
+gap:20px;
+margin-top:30px;
+}
+
+.buttons button:first-child
+{
+background:#d9d9d9;
+color:#000;
+}
+
+.buttons button:last-child
+{
+background:#dc3545;
+color:#fff;
+}
+
+
+input
+{
+width:100%;
+padding:8px;
+margin:5px 0;
+border:1px solid var(--line);
+}
+
+
+</style>
+
+</head>
+
+<body>
+
+<div class="header">
+
+<h1>Digital Gallery</h1>
+
+<button onclick="openForm()">
+Create Your Gallery
+</button>
+
+</div>
+
+<div class="container">
+
+<div class="gallery" id="gallery">
+</div>
+<div class="sidebar">
+
+<h3>Mini Galleries</h3>
+
+<div id="mini"></div>
+
+</div>
+
+<div class="modal" id="modal">
+
+
+<div class="form gallery-form">
+
+<h2>Create Your Mini Gallery</h2>
+
+<label>Gallery Theme:</label>
+
+<input
+type="text"
+id="galleryTheme"
+placeholder="Enter gallery theme">
+
+<label>Select Images from Saved Images:</label>
+
+<div id="savedImages">
+
+</div>
+
+<div class="buttons">
+
+<button onclick="createGallery()">
+Confirm
+</button>
+
+<button onclick="closeForm()">
+Cancel
+</button>
+
+</div>
+
+</div>
+
+</div>
+
+
+
+<script>
+   let defaultData =
+[
+{
+img:"https://picsum.photos/id/1015/200/200",
+title:"Figure of Admiral George Rodney",
+artist:"Unknown",
+date:"18th Century",
+medium:"Sculpture",
+dim:"40 cm"
+},
+
+{
+img:"https://picsum.photos/id/1025/200/200",
+title:"Advertisement for Norwich Stone Ware Factory",
+artist:"N/A",
+date:"1800",
+medium:"Print",
+dim:"25 x 30 cm"
+},
+
+{
+img:"https://picsum.photos/id/1035/200/200",
+title:"Ale Glass",
+artist:"Unknown",
+date:"1800",
+medium:"Glass",
+dim:"10 cm"
+},
+
+{
+img:"https://picsum.photos/id/1045/200/200",
+title:"Andiron",
+artist:"N/A",
+date:"ca. 1790",
+medium:"Brass",
+dim:"H. 27 in. (68.6 cm)"
+},
+
+{
+img:"https://picsum.photos/id/1055/200/200",
+title:"Andiron Set",
+artist:"Unknown",
+date:"18th Century",
+medium:"Brass",
+dim:"Pair Set"
+},
+
+{
+img:"https://picsum.photos/id/1065/200/200",
+title:"Finial Set",
+artist:"N/A",
+date:"19th Century",
+medium:"Metal",
+dim:"Various sizes"
+},
+
+{
+img:"https://picsum.photos/id/1075/200/200",
+title:"Andiron Variation A",
+artist:"Unknown",
+date:"1780",
+medium:"Brass",
+dim:"25 in"
+},
+
+{
+img:"https://picsum.photos/id/1084/200/200",
+title:"Andiron Variation B",
+artist:"Unknown",
+date:"1820",
+medium:"Iron",
+dim:"30 in"
+},
+];
+
+let data=[...defaultData];
+data = data.filter((item, index, self) =>
+    index === self.findIndex((t) => t.img === item.img)
+);
+shuffleGallery();
+
+
+
+function shuffleGallery()
+{
+for(let i=data.length-1;i>0;i--)
+{
+let j=Math.floor(Math.random()*(i+1));
+
+[data[i],data[j]]=[data[j],data[i]];
+}
+}
+
+let savedImages =
+JSON.parse(localStorage.getItem("savedImages")) || [];
+function render()
+{
+let g = document.getElementById("gallery")
+
+g.innerHTML = ""
+
+data.forEach((d,index) =>
+{
+
+let card = document.createElement("div")
+
+card.className = "card"
+
+card.innerHTML = `
+<div class="share" data-index="${index}">
+⤴
+</div>
+
+<img src="${d.img}">
+
+<div class="title">
+${d.title}
+</div>
+
+<div class="overlay">
+<b>${d.title}</b><br>
+Artist: ${d.artist}<br>
+Date: ${d.date}<br>
+Medium: ${d.medium}<br>
+Dimensions: ${d.dim}
+</div>
+`
+card.querySelector(".share").addEventListener("click",function(){
+
+saveImage(index,this);
+
+});
+g.appendChild(card)
+
+})
+
+renderMini()
+}
+let galleries =
+JSON.parse(localStorage.getItem("galleries")) || [];
+
+function renderMini()
+{
+
+let m=document.getElementById("mini");
+
+m.innerHTML="";
+
+galleries.forEach((gallery,index)=>{
+
+m.innerHTML += `
+<div class="mini">
+
+<img src="${gallery.images && gallery.images.length ? gallery.images[0].img : ''}">
+
+<span onclick="openGallery(${index})">
+${gallery.theme}
+</span>
+
+<button class="delete-gallery"
+onclick="event.stopPropagation();deleteGallery(${index})">
+Delete
+</button>
+
+</div>
+`;
+
+});
+
+}
+function openForm()
+{
+
+document.getElementById("modal").style.display="flex";
+
+let box=document.getElementById("savedImages");
+
+box.innerHTML="";
+savedImages.forEach((img,index)=>{
+box.innerHTML += `
+<div class="saved-card">
+
+<img
+src="${img.img}"
+data-index="${index}"
+onclick="this.classList.toggle('selected')">
+
+<span
+class="remove-image"
+onclick="removeSavedImage(${index})">
+
+✖
+
+</span>
+
+</div>
+`;
+
+});
+
+}
+function closeForm()
+{
+document.getElementById("modal").style.display="none";
+
+document.getElementById("galleryTheme").value="";
+
+document.querySelectorAll("#savedImages img.selected")
+.forEach(img=>{
+img.classList.remove("selected");
+});
+}
+
+function addItem()
+{
+let item =
+{
+img: document.getElementById("img").value,
+title: document.getElementById("title").value,
+artist: document.getElementById("artist").value,
+date: document.getElementById("date").value,
+medium: document.getElementById("medium").value,
+dim: document.getElementById("dim").value
+}
+
+data.push(item);
+
+
+
+closeForm();
+render();
+
+}
+function saveImage(index,btn)
+{
+
+if(savedImages.some(item=>item.img===data[index].img))
+{
+alert("Image already saved.");
+btn.classList.add("saved");
+renderMini();
+return;
+}
+savedImages.push({
+img:data[index].img,
+title:data[index].title,
+artist:data[index].artist,
+date:data[index].date,
+medium:data[index].medium,
+dim:data[index].dim
+});
+
+
+localStorage.setItem(
+"savedImages",
+JSON.stringify(savedImages)
+);
+
+btn.classList.add("saved");
+
+if(document.getElementById("modal").style.display==="flex")
+{
+openForm();
+renderMini();
+}
+
+}
+
+function removeSavedImage(index)
+{
+
+savedImages.splice(index,1);
+
+localStorage.setItem(
+"savedImages",
+JSON.stringify(savedImages)
+);
+
+openForm();
+
+}
+function deleteGallery(index)
+{
+galleries.splice(index,1);
+
+localStorage.setItem(
+"galleries",
+JSON.stringify(galleries)
+);
+
+renderMini();
+
+document.getElementById("galleryTheme").value = "";
+
+closeForm();
+renderMini();
+}
+function openGallery(index)
+{
+alert(galleries[index].theme);
+}
+
+function createGallery()
+{
+
+let theme =
+document.getElementById("galleryTheme").value;
+
+let selected=[];
+
+document.querySelectorAll("#savedImages img.selected")
+.forEach(img=>{
+
+selected.push(
+
+savedImages[
+img.dataset.index
+]
+
+);
+
+});
+
+if(theme=="")
+{
+alert("Enter Gallery Theme");
+return;
+}
+
+if(selected.length==0)
+{
+alert("Select Images");
+return;
+}
+
+/* FIX #3 & #4: only ONE image should be selected when creating a
+   mini gallery. If user selects 2 or more images and presses Confirm,
+   block gallery creation and show the required error message. */
+if(selected.length>1)
+{
+alert("Only select one image at a time.");
+return;
+}
+
+galleries.push({
+
+theme:theme,
+
+images:selected
+
+});
+
+localStorage.setItem(
+
+"galleries",
+
+JSON.stringify(galleries)
+
+);
+
+renderMini();
+
+closeForm();
+
+
+closeForm();
+
+}
+render();
+renderMini();
+
+</script>
+
+</body>
+
+</html>

@@ -1,0 +1,261 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Eco Sort Challenge</title>
+
+<style>
+
+body{
+margin:0;
+font-family:Arial;
+background:#f5f5f5;
+color:#333;
+text-align:center;
+}
+
+.screen{
+display:none;
+padding:20px;
+}
+.active{
+display:block;
+}
+
+h1{
+color:#2e7d32;
+margin-top:20px;
+}
+
+.btn{
+padding:12px 20px;
+margin:10px;
+background:#4caf50;
+border:none;
+color:white;
+cursor:pointer;
+border-radius:8px;
+}
+.btn:hover{
+background:#388e3c;
+}
+
+.top{
+display:flex;
+justify-content:space-around;
+margin-top:20px;
+font-size:18px;
+}
+
+.itemBox{
+margin:30px auto;
+padding:15px;
+width:220px;
+background:#c8e6c9;
+border-radius:10px;
+font-weight:bold;
+cursor:grab;
+}
+
+.bins{
+display:grid;
+grid-template-columns:repeat(5,1fr);
+gap:10px;
+margin-top:40px;
+padding:0 20px;
+}
+
+.bin{
+background:#D2B48C;
+padding:20px;
+border-radius:0 0 50% 50%;
+border:2px solid #8B4513;
+min-height:100px;
+font-weight:bold;
+}
+
+.bin:hover{
+background:#caa06a;
+}
+
+#msg{
+margin-top:20px;
+font-size:20px;
+}
+
+.over{
+font-size:28px;
+color:red;
+margin-top:40px;
+}
+
+</style>
+</head>
+
+<body>
+
+<div id="levelScreen" class="screen active">
+<h1>Eco Sort Challenge</h1>
+<p>Select Level</p>
+
+<button class="btn" onclick="startGame('easy')">Easy</button>
+<button class="btn" onclick="startGame('medium')">Medium</button>
+<button class="btn" onclick="startGame('hard')">Hard</button>
+</div>
+
+<div id="gameScreen" class="screen">
+
+<div class="top">
+<div>Score: <span id="score">0</span></div>
+<div>Time: <span id="time">0</span>s</div>
+</div>
+
+<div id="itemBox" class="itemBox" draggable="true"></div>
+
+<div class="bins">
+
+<div class="bin" ondrop="drop(event,'Paper')" ondragover="allow(event)">Paper</div>
+<div class="bin" ondrop="drop(event,'Plastic')" ondragover="allow(event)">Plastic</div>
+<div class="bin" ondrop="drop(event,'Organic')" ondragover="allow(event)">Organic</div>
+<div class="bin" ondrop="drop(event,'Glass')" ondragover="allow(event)">Glass</div>
+<div class="bin" ondrop="drop(event,'Metal')" ondragover="allow(event)">Metal</div>
+
+</div>
+
+<div id="msg"></div>
+
+</div>
+
+<div id="overScreen" class="screen">
+<h1 class="over">Game Over</h1>
+<p>Your Score: <span id="finalScore"></span></p>
+<button class="btn" onclick="location.reload()">Restart</button>
+</div>
+
+<script>
+ const easyItems=[
+{name:"Newspaper",category:"Paper"},
+{name:"Water Bottle",category:"Plastic"},
+{name:"Banana Peel",category:"Organic"},
+{name:"Glass Bottle",category:"Glass"},
+{name:"Tin Can",category:"Metal"}
+];
+
+const mediumItems=[
+{name:"Cardboard Box",category:"Paper"},
+{name:"Plastic Spoon",category:"Plastic"},
+{name:"Apple Core",category:"Organic"},
+{name:"Mirror",category:"Glass"},
+{name:"Aluminum Foil",category:"Metal"}
+];
+
+const hardItems=[
+{name:"Magazine",category:"Paper"},
+{name:"Yogurt Cup",category:"Plastic"},
+{name:"Tea Bag",category:"Organic"},
+{name:"Broken Window Glass",category:"Glass"},
+{name:"Steel Wire",category:"Metal"}
+];
+
+let items=[];
+let remainingItems=[];
+let currentItem;
+let score=0;
+let time=0;
+let timer;
+
+function startGame(level){
+
+document.getElementById("levelScreen").classList.remove("active");
+document.getElementById("gameScreen").classList.add("active");
+if(level==="easy"){
+time=60;
+items=[...easyItems];
+}
+
+if(level==="medium"){
+time=35;
+items=[...mediumItems];
+}
+
+if(level==="hard"){
+time=20;
+items=[...hardItems];
+}
+
+document.getElementById("time").innerText=time;
+
+remainingItems=[...items];
+
+nextItem();
+startTimer();
+}
+
+function startTimer(){
+timer=setInterval(()=>{
+time--;
+document.getElementById("time").innerText=time;
+
+if(time<=0){
+clearInterval(timer);
+gameOver();
+}
+},1000);
+}
+function nextItem(){
+
+if(remainingItems.length===0){
+gameOver();
+return;
+}
+
+const randomIndex=Math.floor(Math.random()*remainingItems.length);
+
+currentItem=remainingItems.splice(randomIndex,1)[0];
+
+const itemBox=document.getElementById("itemBox");
+itemBox.innerText=currentItem.name;
+itemBox.dataset.category=currentItem.category;
+
+}
+
+document.getElementById("itemBox").ondragstart=function(e){
+e.dataTransfer.setData("text",currentItem.category);
+};
+
+function allow(e){
+e.preventDefault();
+}
+
+function drop(e,bin){
+e.preventDefault();
+
+let correct=e.dataTransfer.getData("text");
+if(correct===bin){
+score++;
+document.getElementById("msg").innerText="✔ Correct!";
+document.getElementById("msg").style.color="green";
+}
+else{
+score--;
+
+document.getElementById("msg").innerText="❌ Wrong! -1 Point";
+document.getElementById("msg").style.color="red";
+}
+
+document.getElementById("score").innerText=score;
+
+nextItem();
+}
+
+function gameOver(){
+document.getElementById("gameScreen").classList.remove("active");
+document.getElementById("overScreen").classList.add("active");
+
+document.getElementById("finalScore").innerText=score;
+}
+
+</script>
+
+</body>
+</html>

@@ -1,0 +1,232 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Escape the Grid</title>
+
+<style>
+body{
+  margin:0;
+  font-family:Arial;
+  display:flex;
+  justify-content:center;
+  align-items:center;
+  height:100vh;
+  background:#eee;
+}
+
+.container{
+  text-align:center;
+}
+
+canvas{
+  background:white;
+  display:block;
+  margin:auto;
+}
+
+button{
+  padding:10px 20px;
+  margin:5px;
+  cursor:pointer;
+}
+
+#game{display:none;}
+#result{display:none;}
+</style>
+</head>
+
+<body>
+
+<div class="container">
+
+<h1>Escape the Grid</h1>
+
+<div id="menu">
+  <button onclick="start('easy')">Easy</button>
+  <button onclick="start('medium')">Medium</button>
+  <button onclick="start('hard')">Hard</button>
+</div>
+
+<div id="game">
+  <p id="timer">Time: 0</p>
+  <canvas id="canvas"></canvas>
+</div>
+
+<div id="result">
+  <h2 id="msg"></h2>
+  <button onclick="location.reload()">Restart</button>
+</div>
+
+</div>
+
+<script>
+
+let rows, cols, size, grid = [];
+let player = {x:0,y:0};
+let end = {};
+let ctx, canvas;
+let time = 0, interval;
+
+class Cell{
+  constructor(x,y){
+    this.x=x;
+    this.y=y;
+    this.visited=false;
+    this.walls=[true,true,true,true];
+  }
+}
+
+function index(x,y){
+  if(x<0||y<0||x>=cols||y>=rows) return -1;
+  return x+y*cols;
+}
+
+function removeWalls(a,b){
+  let dx=a.x-b.x;
+  if(dx===1){a.walls[3]=false;b.walls[1]=false;}
+  else if(dx===-1){a.walls[1]=false;b.walls[3]=false;}
+
+  let dy=a.y-b.y;
+  if(dy===1){a.walls[0]=false;b.walls[2]=false;}
+  else if(dy===-1){a.walls[2]=false;b.walls[0]=false;}
+}
+
+function generate(){
+  let stack=[];
+  let current=grid[0];
+  current.visited=true;
+
+  while(true){
+    let next=[];
+    let x=current.x;
+    let y=current.y;
+
+    let neighbors=[
+      grid[index(x,y-1)],
+      grid[index(x+1,y)],
+      grid[index(x,y+1)],
+      grid[index(x-1,y)]
+    ];
+
+    for(let n of neighbors){
+      if(n && !n.visited) next.push(n);
+    }
+
+    if(next.length>0){
+      let chosen=next[Math.floor(Math.random()*next.length)];
+      chosen.visited=true;
+      stack.push(current);
+      removeWalls(current,chosen);
+      current=chosen;
+    }else if(stack.length>0){
+      current=stack.pop();
+    }else break;
+  }
+}
+
+function draw(){
+  ctx.clearRect(0,0,canvas.width,canvas.height);
+
+  for(let c of grid){
+    let x=c.x*size;
+    let y=c.y*size;
+
+    ctx.strokeStyle="black";
+
+    if(c.walls[0]) drawLine(x,y,x+size,y);
+    if(c.walls[1]) drawLine(x+size,y,x+size,y+size);
+    if(c.walls[2]) drawLine(x,y+size,x+size,y+size);
+    if(c.walls[3]) drawLine(x,y,x,y+size);
+  }
+
+  ctx.fillStyle="green";
+  ctx.fillRect(end.x*size,end.y*size,size,size);
+
+  ctx.fillStyle="red";
+  ctx.beginPath();
+  ctx.arc(player.x*size+size/2,player.y*size+size/2,size/4,0,Math.PI*2);
+  ctx.fill();
+}
+
+function drawLine(x1,y1,x2,y2){
+  ctx.beginPath();
+  ctx.moveTo(x1,y1);
+  ctx.lineTo(x2,y2);
+  ctx.stroke();
+}
+
+function start(level){
+
+  document.getElementById("menu").style.display="none";
+  document.getElementById("game").style.display="block";
+
+  if(level==="easy"){rows=10;cols=10;time=60;}
+  if(level==="medium"){rows=15;cols=15;time=90;}
+  if(level==="hard"){rows=20;cols=20;time=120;}
+
+  canvas=document.getElementById("canvas");
+  ctx=canvas.getContext("2d");
+
+  size=30;
+  canvas.width=cols*size;
+  canvas.height=rows*size;
+
+  grid=[];
+  for(let y=0;y<rows;y++){
+    for(let x=0;x<cols;x++){
+      grid.push(new Cell(x,y));
+    }
+  }
+
+  generate();
+
+  player={x:0,y:0};
+  end={x:cols-1,y:rows-1};
+
+  startTimer();
+  draw();
+}
+
+function startTimer(){
+  document.getElementById("timer").innerText="Time: "+time;
+
+  interval=setInterval(()=>{
+    time--;
+    document.getElementById("timer").innerText="Time: "+time;
+
+    if(time<=0){
+      endGame(false);
+    }
+  },1000);
+}
+
+function endGame(win){
+  clearInterval(interval);
+  document.getElementById("game").style.display="none";
+  document.getElementById("result").style.display="block";
+
+  document.getElementById("msg").innerText =
+    win ? "You Win 🎉" : "Time Up 💀";
+}
+
+document.addEventListener("keydown",(e)=>{
+
+  let c=grid[index(player.x,player.y)];
+
+  if(e.key==="ArrowUp" && !c.walls[0]) player.y--;
+  if(e.key==="ArrowRight" && !c.walls[1]) player.x++;
+  if(e.key==="ArrowDown" && !c.walls[2]) player.y++;
+  if(e.key==="ArrowLeft" && !c.walls[3]) player.x--;
+
+  draw();
+
+  if(player.x===end.x && player.y===end.y){
+    endGame(true);
+  }
+});
+
+</script>
+
+</body>
+</html>
